@@ -2,3 +2,4 @@ build/
 node_modules/
 *.rbxl
 *.rbxlx
+__pycache__/
