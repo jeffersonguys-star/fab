@@ -252,8 +252,24 @@ function CAB.Criar(P, pastaPai)
 	-- FUSELAGEM, NARIZ E ASAS ---------------------------------------------------
 	local raioF = jato and 0.75 or 0.68
 	local comp = jato and 14 or 9
-	local fus = parte("Fuselagem", Vector3.new(comp, raioF * 2, raioF * 2), L(0, 0, 0.5, 0, math.rad(90), 0), corFuselagem, Enum.Material.Metal)
-	fus.Shape = Enum.PartType.Cylinder
+	-- a fuselagem e dividida em duas partes, deixando a abertura da cabine
+	local zIni, zFim = 0.5 - comp / 2, 0.5 + comp / 2
+	local frenteFim, trasIni = oz - 0.95, oz + 0.85
+	for _, seg in ipairs({ { zIni, frenteFim }, { trasIni, zFim } }) do
+		local c = seg[2] - seg[1]
+		if c > 0.05 then
+			local f = parte("Fuselagem", Vector3.new(c, raioF * 2, raioF * 2), L(0, 0, (seg[1] + seg[2]) / 2, 0, math.rad(90), 0), corFuselagem, Enum.Material.Metal)
+			f.Shape = Enum.PartType.Cylinder
+		end
+	end
+	-- banheira da cabine (piso e laterais)
+	local largTub = (P.Assentos == "lado") and 1.2 or 0.86
+	parte("PisoCabine", Vector3.new(largTub, 0.06, 1.85), L(0, oy - 1.15, oz - 0.05), PRETO, Enum.Material.Rubber)
+	for _, sx in ipairs({ -1, 1 }) do
+		parte("LateralCabine", Vector3.new(0.05, 0.75, 1.85), L(sx * largTub / 2, oy - 0.8, oz - 0.05), GRAFITE, Enum.Material.Metal)
+		parte("LateralExterna", Vector3.new(0.04, 0.75, 1.85), L(sx * (largTub / 2 + 0.05), oy - 0.8, oz - 0.05), corFuselagem, Enum.Material.Metal)
+	end
+	parte("Antepara", Vector3.new(largTub, 0.75, 0.05), L(0, oy - 0.8, oz + 0.88), GRAFITE, Enum.Material.Metal)
 	-- dorso por tras do canopi
 	parte("Dorso", Vector3.new(0.7, 0.5, comp * 0.45), L(0, raioF * 0.75, oz + 1.6 + comp * 0.2), corFuselagem, Enum.Material.Metal)
 	-- nariz
@@ -268,7 +284,7 @@ function CAB.Criar(P, pastaPai)
 			parte("EntradaAr", Vector3.new(0.5, 0.9, 2.4), L(s * (raioF + 0.15), -0.25, oz + 1.2), corFuselagem, Enum.Material.Metal)
 		end
 	else
-		local capo = parte("Capo", Vector3.new(2.6, raioF * 1.8, raioF * 1.8), L(0, -0.12, oz - 2.0, 0, math.rad(90), 0), corFuselagem, Enum.Material.Metal)
+		local capo = parte("Capo", Vector3.new(2.2, raioF * 1.8, raioF * 1.8), L(0, -0.12, oz - 2.2, 0, math.rad(90), 0), corFuselagem, Enum.Material.Metal)
 		capo.Shape = Enum.PartType.Cylinder
 		local spinner = parte("Spinner", Vector3.new(0.55, 0.55, 0.55), L(0, -0.15, oz - 3.4), Color3.fromRGB(30, 30, 30), Enum.Material.Metal)
 		spinner.Shape = Enum.PartType.Ball
