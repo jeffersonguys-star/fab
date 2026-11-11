@@ -1,0 +1,44 @@
+name: Publicar no Roblox
+
+# Sempre que o codigo do jogo muda na branch main, monta o place com o Rojo
+# e publica no Roblox. Antes, confere a sintaxe de todos os scripts.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "default.project.json"
+      - "automacao/**"
+  workflow_dispatch:
+
+concurrency:
+  group: publicacao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Conferir a sintaxe dos scripts
+        run: |
+          sudo apt-get install -y -qq lua5.1 > /dev/null
+          erro=0
+          for f in $(find src -name "*.lua"); do
+            luac5.1 -p "$f" || erro=1
+          done
+          exit $erro
+
+      - name: Testar o modelo de voo
+        run: lua5.1 teste/teste_fisica.lua decolagem | tail -20
+
+      - name: Montar e publicar o place
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          UNIVERSE_ID: ${{ vars.UNIVERSE_ID }}
+          PLACE_ID: ${{ vars.PLACE_ID }}
+        run: bash automacao/publicar.sh
