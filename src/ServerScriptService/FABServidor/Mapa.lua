@@ -183,6 +183,21 @@ local function iluminacao()
 		s.SunAngularSize = 14
 		s.Parent = Lighting
 	end
+	if not workspace.Terrain:FindFirstChildOfClass("Clouds") then
+		local n = Instance.new("Clouds")
+		n.Cover = 0.45
+		n.Density = 0.6
+		n.Color = Color3.fromRGB(246, 247, 250)
+		n.Parent = workspace.Terrain
+	end
+	if not Lighting:FindFirstChildOfClass("ColorCorrectionEffect") then
+		local cc = Instance.new("ColorCorrectionEffect")
+		cc.Saturation = 0.08
+		cc.Contrast = 0.1
+		cc.TintColor = Color3.fromRGB(255, 250, 240)
+		cc.Parent = Lighting
+	end
+	Lighting.ColorShift_Top = Color3.fromRGB(255, 240, 215)
 	if not Lighting:FindFirstChildOfClass("BloomEffect") then
 		local b = Instance.new("BloomEffect")
 		b.Intensity = 0.4
@@ -229,6 +244,20 @@ end
 -- Terreno: ilha (plato, praias, serras) e oceano. Gerado aos poucos para nao travar.
 local function gerarTerreno()
 	local T = workspace.Terrain
+	pcall(function()
+		T:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(96, 124, 62))
+		T:SetMaterialColor(Enum.Material.LeafyGrass, Color3.fromRGB(70, 104, 54))
+		T:SetMaterialColor(Enum.Material.Ground, Color3.fromRGB(122, 100, 72))
+		T:SetMaterialColor(Enum.Material.Mud, Color3.fromRGB(96, 78, 58))
+		T:SetMaterialColor(Enum.Material.Sand, Color3.fromRGB(205, 190, 150))
+		T:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(110, 108, 102))
+		T:SetMaterialColor(Enum.Material.Water, Color3.fromRGB(34, 96, 120))
+	end)
+	T.WaterColor = Color3.fromRGB(34, 96, 120)
+	T.WaterTransparency = 0.55
+	T.WaterWaveSize = 0.35
+	T.WaterWaveSpeed = 12
+	T.WaterReflectance = 0.6
 	local L = MD.Limite
 	local prof = MD.ProfundidadeMar
 	local passo = 16
@@ -270,6 +299,23 @@ local function gerarTerreno()
 			cont = cont + 1
 			if cont % 20 == 0 then task.wait() end
 		end
+	end
+	-- 4. manchas de terra e mato alto no gramado (fora da base), para quebrar a cor uniforme
+	local rng = Random.new(2024)
+	for _ = 1, 260 do
+		local x, z = rng:NextNumber(-4500, 6000), rng:NextNumber(-9500, 9500)
+		local dentro = math.abs(x) < 520
+			or (x > 560 and x < 2100 and math.abs(z) < 2300)
+			or (x > 900 and x < 2000 and z < -3700 and z > -4700)
+			or (x > 2000 and x < 4800 and z > -2900 and z < 4000)
+		if not dentro and math.abs(x) < MD.Ilha.RaioX * 0.9 and math.abs(z) < MD.Ilha.RaioZ * 0.9 then
+			local mat = (rng:NextInteger(1, 3) == 1) and Enum.Material.Ground or ((rng:NextInteger(1, 2) == 1) and Enum.Material.LeafyGrass or Enum.Material.Mud)
+			pcall(function()
+				T:FillBlock(CFrame.new(x, MD.Plato - 1, z) * CFrame.Angles(0, rng:NextNumber(0, 3.14), 0),
+					Vector3.new(rng:NextNumber(40, 160), 4, rng:NextNumber(40, 160)), mat)
+			end)
+		end
+		if _ % 20 == 0 then task.wait() end
 	end
 	workspace:SetAttribute("TerrenoPronto", true)
 end
