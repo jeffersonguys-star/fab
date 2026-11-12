@@ -118,6 +118,7 @@ function CTRL.Criar(UI, P, opcoes)
 	botao("AGSM", "ANTI-G", 9, true, function() obj.AGSM = true end, function() obj.AGSM = false end)
 	botao("Respirar", "RESPIRAR", 10, false, function() obj.AoAcao("Respirar") end)
 	botao("Motor", "MOTOR", 11, false, function() obj.AoAcao("Motor") end)
+	botao("Camera", "CÂMERA", 12, false, function() obj.AoAcao("Camera") end)
 
 	-- topo: menu e vista
 	local topo = UI.Novo("Frame", { Position = UDim2.new(0, 16, 0, 14), Size = UDim2.fromOffset(0, 36), AutomaticSize = Enum.AutomaticSize.X,
@@ -168,6 +169,7 @@ function CTRL.Criar(UI, P, opcoes)
 			elseif k == Enum.KeyCode.V then obj.AoAcao("AeroFreio")
 			elseif k == Enum.KeyCode.R then obj.AoAcao("Respirar")
 			elseif k == Enum.KeyCode.E then obj.AoAcao("Motor")
+			elseif k == Enum.KeyCode.B then obj.AoAcao("Camera")
 			elseif k == Enum.KeyCode.C then obj.OlharYaw, obj.OlharPitch = 0, 0
 			elseif k == Enum.KeyCode.F and jato then aplicarManete(valorManete > 0.9 and 0.88 or 1)
 			elseif k == Enum.KeyCode.Space then obj.AGSM = true

@@ -215,6 +215,10 @@ function SIM.Iniciar(UI)
 				e.AeroFreio = not e.AeroFreio
 			elseif nome == "Respirar" then
 				Fisiologia.Respirar(piloto)
+			elseif nome == "Camera" then
+				v.Vista = ((v.Vista or 1) % 5) + 1
+				local nomes = { "Cabine", "Atrás", "Lateral", "Frente", "Cima" }
+				hud.Mensagem("Câmera: " .. nomes[v.Vista], 1.2)
 			elseif nome == "Motor" then
 				local jatoM = P.Tipo == "jato"
 				if s.MotorLigado then
@@ -406,6 +410,12 @@ function SIM.Iniciar(UI)
 			local gc = corpo and corpo.Giro or CFrame.new()
 			local olho = cf * CFrame.new(dc) * CFrame.new(P2.Olho[1] * E, P2.Olho[2] * E, P2.Olho[3] * E) * gc
 				* CFrame.Angles(0, math.rad(ctrl.OlharYaw), 0) * CFrame.Angles(math.rad(ctrl.OlharPitch), 0, 0) * cabeca * tremor
+			if (v.Vista or 1) > 1 then
+				local d = math.max(7, (P2.Envergadura or 10) * 1.1) * E
+				local lados = { nil, Vector3.new(0, 0.18, 1), Vector3.new(1, 0.08, 0.05), Vector3.new(-0.55, 0.2, -1), Vector3.new(0.01, 1, 0.01) }
+				local pos = cf * (lados[v.Vista].Unit * d)
+				olho = CFrame.lookAt(pos, cf.Position + cf.UpVector * (0.5 * E), v.Vista == 5 and cf.LookVector or Vector3.yAxis)
+			end
 			camera.CFrame = olho
 			cab.Atualizar(cf, s, e, dt)
 			if corpo then pcall(corpo.Atualizar, cf, e, dt) end
