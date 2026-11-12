@@ -262,6 +262,7 @@ local function gerarTerreno()
 	local prof = MD.ProfundidadeMar
 	local passo = 16
 	local cont = 0
+	workspace:SetAttribute("TerrenoProg", 0)
 	-- 1. oceano em blocos (exceto o miolo da ilha)
 	local bloco = 2048
 	for x = -L, L - 1, bloco do
@@ -274,17 +275,19 @@ local function gerarTerreno()
 			task.wait()
 		end
 	end
+	workspace:SetAttribute("TerrenoProg", 0.3)
 	-- 2. plato e praias (sobrescrevem a agua)
 	for z = -MD.Ilha.RaioZ, MD.Ilha.RaioZ, passo do
 		local zc = z + passo / 2
 		local ok, esq, dir = praias(T, zc, passo)
 		if ok then
-			T:FillBlock(CFrame.new((esq + dir) / 2, MD.Plato - 8, zc), Vector3.new(dir - esq, 16, passo), Enum.Material.Grass)
+			T:FillBlock(CFrame.new((esq + dir) / 2, MD.Plato - 9.5, zc), Vector3.new(dir - esq, 16, passo), Enum.Material.Grass)
 		end
 		cont = cont + 1
 		if cont % 40 == 0 then task.wait() end
 	end
 	pontas(T)
+	workspace:SetAttribute("TerrenoProg", 0.6)
 	-- 3. serras: discos empilhados seguindo h(d) = H (1 - d/R)^2
 	for _, m in ipairs(MD.Morros) do
 		local y = 0
@@ -300,6 +303,7 @@ local function gerarTerreno()
 			if cont % 20 == 0 then task.wait() end
 		end
 	end
+	workspace:SetAttribute("TerrenoProg", 0.85)
 	-- 4. manchas de terra e mato alto no gramado (fora da base), para quebrar a cor uniforme
 	local rng = Random.new(2024)
 	for _ = 1, 260 do
@@ -311,12 +315,13 @@ local function gerarTerreno()
 		if not dentro and math.abs(x) < MD.Ilha.RaioX * 0.9 and math.abs(z) < MD.Ilha.RaioZ * 0.9 then
 			local mat = (rng:NextInteger(1, 3) == 1) and Enum.Material.Ground or ((rng:NextInteger(1, 2) == 1) and Enum.Material.LeafyGrass or Enum.Material.Mud)
 			pcall(function()
-				T:FillBlock(CFrame.new(x, MD.Plato - 1, z) * CFrame.Angles(0, rng:NextNumber(0, 3.14), 0),
+				T:FillBlock(CFrame.new(x, MD.Plato - 3.5, z) * CFrame.Angles(0, rng:NextNumber(0, 3.14), 0),
 					Vector3.new(rng:NextNumber(40, 160), 4, rng:NextNumber(40, 160)), mat)
 			end)
 		end
 		if _ % 20 == 0 then task.wait() end
 	end
+	workspace:SetAttribute("TerrenoProg", 1)
 	workspace:SetAttribute("TerrenoPronto", true)
 end
 

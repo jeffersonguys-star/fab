@@ -113,12 +113,33 @@ end
 
 function MALHAS.Iniciar()
 	local ok, ids = pcall(function() return require(FAB:WaitForChild("MalhasIds")) end)
-	if not ok or type(ids) ~= "table" then return end
+	if not ok or type(ids) ~= "table" then
+		workspace:SetAttribute("MalhasTotal", 0)
+		workspace:SetAttribute("MalhasPronto", true)
+		return
+	end
+	local total, feitos, falhas = 0, 0, {}
+	for _ in pairs(ids) do total = total + 1 end
+	workspace:SetAttribute("MalhasTotal", total)
+	workspace:SetAttribute("MalhasOk", 0)
+	workspace:SetAttribute("MalhasFalhas", "")
+	if total == 0 then workspace:SetAttribute("MalhasPronto", true) return end
+	local function terminou(nome, deuCerto)
+		feitos = feitos + 1
+		if deuCerto then
+			workspace:SetAttribute("MalhasOk", (workspace:GetAttribute("MalhasOk") or 0) + 1)
+		else
+			table.insert(falhas, nome)
+			workspace:SetAttribute("MalhasFalhas", table.concat(falhas, ", "))
+		end
+		if feitos >= total then workspace:SetAttribute("MalhasPronto", true) end
+	end
 	for nome, id in pairs(ids) do
 		task.spawn(function()
 			local sucesso, conteudo = pcall(function() return InsertService:LoadAsset(id) end)
 			if not sucesso or not conteudo then
 				warn("[FAB] Malha " .. nome .. " (" .. tostring(id) .. ") nao carregou: " .. tostring(conteudo))
+				terminou(nome, false)
 				return
 			end
 			local modelo = conteudo:FindFirstChildWhichIsA("Model") or conteudo
@@ -128,12 +149,16 @@ function MALHAS.Iniciar()
 			if pronto then
 				pronto.Name = nome
 				pronto.Parent = (string.sub(nome, 1, 4) == "Sim_") and pastaSim or pasta
+				terminou(nome, true)
 			else
 				modelo:Destroy()
+				terminou(nome, false)
 			end
 			if conteudo ~= modelo then conteudo:Destroy() end
 		end)
 	end
+	-- limite de espera: libera a tela de carregamento mesmo que algo trave
+	task.delay(75, function() workspace:SetAttribute("MalhasPronto", true) end)
 end
 
 -- Espera um modelo por ate "tempo" segundos. Devolve nil se nao houver.

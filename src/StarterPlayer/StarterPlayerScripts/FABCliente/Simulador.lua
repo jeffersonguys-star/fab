@@ -181,7 +181,8 @@ function SIM.Iniciar(UI)
 		local cab = CAB.Criar(P, cen.Pasta)
 		for id in pairs(cab.Interruptores) do
 			if id ~= "Trem" and id ~= "Flape" then
-				local ligado = not def.MotorDesligado and id ~= "FreioEst" and id ~= "Partida"
+				local ligado = not def.MotorDesligado and id ~= "Partida"
+				if id == "FreioEst" then ligado = livre end -- voo livre comeca com o freio de estacionamento aplicado
 				cab.DefinirInterruptor(id, ligado)
 			end
 		end
