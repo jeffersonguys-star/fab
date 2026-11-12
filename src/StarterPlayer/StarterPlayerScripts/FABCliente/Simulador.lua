@@ -451,6 +451,7 @@ function SIM.Iniciar(UI)
 				ctx.GLOC = efeitos.GLOC
 				if efeitos.GLOC then ctx.GLOCs = (ctx.GLOCs or 0) + dt end
 				Fisiologia.Definir(efeitos)
+				Fisiologia.Painel(piloto, s.NzFiltrado or s.Nz or 1)
 				ctx.T = ctx.T + dt
 				if s.Destruido then
 					ctx.Concluir(0, false, { "Acidente: " .. tostring(s.Colisao) .. "." })

@@ -202,6 +202,24 @@ return {
 				Eixo = { 1, 0, 0 },
 				Pivo = { 0, -0.5, -4.3 }
 			},
+			TremPortaD = {
+				Ang = -70,
+				Eixo = { 0, 0, 1 },
+				Pivo = { 0.84, 0.0789, 0.45 },
+				Porta = true
+			},
+			TremPortaE = {
+				Ang = 70,
+				Eixo = { 0, 0, 1 },
+				Pivo = { -0.84, 0.0789, 0.45 },
+				Porta = true
+			},
+			TremPortaNariz = {
+				Ang = 85,
+				Eixo = { 0, 0, 1 },
+				Pivo = { -0.18, -0.3072, -4.3 },
+				Porta = true
+			},
 			TremPrincipalD = {
 				Ang = -90,
 				Eixo = { 0, 0, 1 },

@@ -179,7 +179,7 @@ def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True, sem_regia
                 cena.adicionar("Canopi", Malha(Vg, p["F"], suave=True), (150, 190, 205), "Glass", transparencia=transp_vidro)
     adicionar_armamento(cena, pecas, esc, x_max)
     adicionar_cocares(cena, V, I)
-    return trem_gripen(cena) if trem else {}
+    return trem_gripen(cena, V, I) if trem else {}
 
 
 MATS_ARMAS = {"lau_7": (150, 154, 158), "bol_451_container": (214, 216, 212), "lavett_71": (120, 124, 128),
@@ -248,7 +248,7 @@ def adicionar_cocares(cena, V, I):
         cena.adicionar(nomes.get(cor, "Cocar"), m, cor, "SmoothPlastic", rug=0.6)
 
 
-def trem_gripen(cena):
+def trem_gripen(cena, V=None, I=None):
     """Trem de pouso do Gripen: pernas com amortecedor, garfo, freio e rodas; cada perna e uma peca com pivo de recolhimento."""
     from malha import tubo, cilindro, revolucao, caixa
     CROMO, CINZA, PRETO_B = (176, 182, 188), (92, 96, 102), (20, 20, 22)
@@ -297,6 +297,20 @@ def trem_gripen(cena):
         cena.adicionar("TremPrincipal%s" % nome, amort + eixo_ + disco + brace + brace2 + elo + ar, CROMO, "Metal", metal=0.7, rug=0.35)
         cena.adicionar("TremPrincipal%sPneus" % nome, pn, PRETO_B, "Rubber")
         art["TremPrincipal%s" % nome] = {"Pivo": [x * 0.96, -0.5, zM], "Eixo": [0, 0, 1], "Ang": ang}
+    # portas dos compartimentos: ficam fechadas com o trem recolhido e abrem enquanto ele se move / esta baixado
+    def ybaixo(x, z):
+        r = superficie_y(V, I, x, z) if V is not None else None
+        return (r[0] if r else -0.5)
+    COR_P = (122, 128, 134)
+    for lado, nome in ((-1, "E"), (1, "D")):
+        cx, cz, larg, comp = lado * 1.12, 0.45, 0.56, 0.95
+        yb = ybaixo(cx, cz) - 0.008
+        cena.adicionar("TremPorta" + nome, caixa(larg, 0.02, comp, 0.004).mover(cx, yb, cz), COR_P, "SmoothPlastic", rug=0.6)
+        art["TremPorta" + nome] = {"Pivo": [cx - lado * larg / 2, yb, cz], "Eixo": [0, 0, 1], "Ang": lado * -70, "Porta": True}
+    cx, cz = -0.0, -4.3
+    yb = ybaixo(cx, cz) - 0.008
+    cena.adicionar("TremPortaNariz", caixa(0.36, 0.02, 0.7, 0.004).mover(cx, yb, cz), COR_P, "SmoothPlastic", rug=0.6)
+    art["TremPortaNariz"] = {"Pivo": [-0.18, yb, cz], "Eixo": [0, 0, 1], "Ang": 85, "Porta": True}
     return art
 
 

@@ -17,6 +17,7 @@ local Players = game:GetService("Players")
 
 local F = {}
 
+local painel
 local tela, tunel, traco, cinza, preto, vermelho, vinhetas
 local correcao, desfoque
 
@@ -113,8 +114,72 @@ end
 
 function F.Limpar()
 	if tela then tela:Destroy() tela = nil end
+	painel = nil
 	if correcao then correcao:Destroy() correcao = nil end
 	if desfoque then desfoque:Destroy() desfoque = nil end
+end
+
+-- Painel de G: valor, reserva de tolerancia e estado da manobra anti-G ---------------------
+function F.Painel(p, g)
+	if not tela or not tela.Parent then return end
+	if not painel then
+		local q = Instance.new("Frame")
+		q.Name = "PainelG"
+		q.Position = UDim2.fromScale(0.3, 0.012)
+		q.Size = UDim2.fromScale(0.145, 0.085)
+		q.BackgroundColor3 = Color3.fromRGB(8, 10, 12)
+		q.BackgroundTransparency = 0.25
+		q.BorderSizePixel = 0
+		q.Parent = tela
+		local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 8) c.Parent = q
+		local t = Instance.new("TextLabel")
+		t.Name = "Texto"
+		t.BackgroundTransparency = 1
+		t.Size = UDim2.fromScale(1, 0.5)
+		t.Position = UDim2.fromScale(0, 0.04)
+		t.Font = Enum.Font.GothamBold
+		t.TextScaled = true
+		t.TextColor3 = Color3.fromRGB(235, 240, 235)
+		t.Parent = q
+		local fundo = Instance.new("Frame")
+		fundo.Name = "Fundo"
+		fundo.Position = UDim2.fromScale(0.06, 0.58)
+		fundo.Size = UDim2.fromScale(0.88, 0.14)
+		fundo.BackgroundColor3 = Color3.fromRGB(40, 44, 48)
+		fundo.BorderSizePixel = 0
+		fundo.Parent = q
+		local barra = Instance.new("Frame")
+		barra.Name = "Barra"
+		barra.Size = UDim2.fromScale(1, 1)
+		barra.BorderSizePixel = 0
+		barra.Parent = fundo
+		local d = Instance.new("TextLabel")
+		d.Name = "Dica"
+		d.BackgroundTransparency = 1
+		d.Position = UDim2.fromScale(0, 0.75)
+		d.Size = UDim2.fromScale(1, 0.23)
+		d.Font = Enum.Font.GothamMedium
+		d.TextScaled = true
+		d.TextColor3 = Color3.fromRGB(190, 200, 190)
+		d.Parent = q
+		painel = q
+	end
+	local reserva = math.clamp(1 - p.S / 1.0, 0, 1)
+	local ativo = g > 1.6 or p.S > 0.04 or p.Contraindo
+	painel.Visible = ativo
+	if not ativo then return end
+	painel.Texto.Text = string.format("%.1f G", g)
+	local b = painel.Fundo.Barra
+	b.Size = UDim2.fromScale(reserva, 1)
+	b.BackgroundColor3 = reserva > 0.6 and Color3.fromRGB(80, 200, 110) or (reserva > 0.3 and Color3.fromRGB(235, 190, 60) or Color3.fromRGB(230, 70, 60))
+	local dica
+	if p.GLOC then dica = "G-LOC"
+	elseif p.Contraindo then
+		local sem = p.Relogio - p.UltimaRespiracao
+		dica = (sem > 2.8) and "RESPIRE" or "ANTI-G ATIVO"
+	elseif g > 3.2 then dica = "SEGURE ANTI-G"
+	else dica = "TRAJE AUTOMATICO" end
+	painel.Dica.Text = dica
 end
 
 -- Modelo de tolerancia a G ------------------------------------------------------
@@ -145,17 +210,20 @@ function F.AtualizarG(p, g, dt)
 		p.TempoContracao = p.TempoContracao + dt
 		if semRespirar > 3.5 then
 			-- prender o ar demais reduz o retorno venoso
-			p.Eficiencia = math.max(0.15, 1 - (semRespirar - 3.5) / 3)
+			p.Eficiencia = math.max(0.6, 1 - (semRespirar - 3.5) / 6)
 		elseif semRespirar < 0.45 then
-			p.Eficiencia = 0.55 -- durante a inspiracao rapida
+			p.Eficiencia = 0.8 -- durante a inspiracao rapida
 		else
 			p.Eficiencia = 1
 		end
+		if semRespirar > 3.5 then p.Eficiencia = math.max(p.Eficiencia, 0.6) end
 	else
 		p.TempoContracao = 0
 		p.Eficiencia = 0
 	end
-	local tol = p.Tolerancia + (p.Traje or 0) + (p.Contraindo and 3.2 * p.Eficiencia or 0)
+	-- o traje anti-G enche sozinho conforme o G sobe (valvula automatica)
+	local traje = (p.Traje or 0) * math.clamp((g - 1.8) / 2.2, 0, 1)
+	local tol = p.Tolerancia + traje + (p.Contraindo and 3.2 * p.Eficiencia or 0)
 	local inicio = tol * 0.82
 	local alvo = math.clamp((g - inicio) / (tol * 0.32), 0, 1.3)
 	local tau = (alvo > p.S) and 3.2 or 1.4
@@ -179,6 +247,7 @@ function F.AtualizarG(p, g, dt)
 		end
 	end
 	efeitos.GLOC = p.GLOC
+	p.Tol = tol
 	return efeitos
 end
 

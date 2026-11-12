@@ -73,8 +73,8 @@ function CEN.Criar()
 					local x, z = (cx + dx) * BLOCO, (cz + dz) * BLOCO
 					local dentro = math.abs(x) + BLOCO / 2 <= MD.Limite and math.abs(z) + BLOCO / 2 <= MD.Limite
 					local t = tiles[i]
-					t.CFrame = CFrame.new(x, -0.6, z)
-					t.Transparency = dentro and 1 or 0
+					t.CFrame = CFrame.new(x, -1.2, z)
+					t.Transparency = 0 -- tambem dentro do mapa: onde o terreno ainda nao carregou, aparece o mar e nao o vazio
 				end
 			end
 		end

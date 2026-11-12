@@ -400,8 +400,15 @@ function CAB.Criar(P, pastaPai)
 			if art and w and c0 then
 				local pv = Vector3.new(art.Pivo[1] * E, art.Pivo[2] * E, art.Pivo[3] * E)
 				local eixo = Vector3.new(art.Eixo[1], art.Eixo[2], art.Eixo[3])
-				w.C0 = CFrame.new(pv) * CFrame.fromAxisAngle(eixo, math.rad(art.Ang) * (1 - tt)) * CFrame.new(-pv) * c0
-				p.LocalTransparencyModifier = tt < 0.02 and 1 or 0
+				if art.Porta then
+					-- porta do compartimento: fechada com o trem recolhido, aberta enquanto ele se move ou esta baixado
+					local ab = math.clamp(tt * 8, 0, 1)
+					w.C0 = CFrame.new(pv) * CFrame.fromAxisAngle(eixo, math.rad(art.Ang) * ab) * CFrame.new(-pv) * c0
+					p.LocalTransparencyModifier = 0
+				else
+					w.C0 = CFrame.new(pv) * CFrame.fromAxisAngle(eixo, math.rad(art.Ang) * (1 - tt)) * CFrame.new(-pv) * c0
+					p.LocalTransparencyModifier = tt < 0.02 and 1 or 0
+				end
 			else
 				p.LocalTransparencyModifier = tremEmbaixo and 0 or 1
 			end
