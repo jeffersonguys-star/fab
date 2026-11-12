@@ -20,9 +20,28 @@ local MD = require(FAB:WaitForChild("MapaDados"))
 
 local MALHAS = {}
 
+local ServerStorage = game:GetService("ServerStorage")
+
 local pasta = Instance.new("Folder")
 pasta.Name = "FABMalhas"
 pasta.Parent = ReplicatedStorage
+
+-- Cabines (pesadas) ficam no servidor e so sao enviadas ao jogo quando alguem entra no simulador.
+local pastaSim = Instance.new("Folder")
+pastaSim.Name = "FABMalhasSim"
+pastaSim.Parent = ServerStorage
+
+local pedido = Instance.new("RemoteEvent")
+pedido.Name = "FABPedirCabine"
+pedido.Parent = ReplicatedStorage
+pedido.OnServerEvent:Connect(function(_, id)
+	if type(id) ~= "string" or #id > 12 then return end
+	local nome = "Sim_" .. id
+	local m = pastaSim:FindFirstChild(nome)
+	if m and not pasta:FindFirstChild(nome) then
+		m:Clone().Parent = pasta
+	end
+end)
 
 local function hexParaCor(h)
 	local r, g, b = tonumber(string.sub(h, 1, 2), 16), tonumber(string.sub(h, 3, 4), 16), tonumber(string.sub(h, 5, 6), 16)
@@ -108,7 +127,7 @@ function MALHAS.Iniciar()
 			local pronto = preparar(nome, modelo, escala)
 			if pronto then
 				pronto.Name = nome
-				pronto.Parent = pasta
+				pronto.Parent = (string.sub(nome, 1, 4) == "Sim_") and pastaSim or pasta
 			else
 				modelo:Destroy()
 			end

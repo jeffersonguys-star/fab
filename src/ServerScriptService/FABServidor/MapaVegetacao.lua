@@ -41,7 +41,7 @@ function VG.Construir(N, Mapa, raiz)
 			if cont % 25 == 0 then task.wait() end
 		end
 		-- bosques
-		for _ = 1, 700 do
+		for _ = 1, 220 do
 			local x, z = rng:NextNumber(-4500, 6200), rng:NextNumber(-9500, 9500)
 			if livre(x, z) and math.abs(x - 600) > 80 then plantar(x, z) end
 		end

@@ -111,6 +111,13 @@ function CAB.Criar(P, pastaPai)
 	-- MALHA ---------------------------------------------------------------------------------
 	local pastaMalhas = ReplicatedStorage:FindFirstChild("FABMalhas")
 	local malha = pastaMalhas and pastaMalhas:FindFirstChild("Sim_" .. P.Id)
+	if not malha and pastaMalhas then
+		local ped = ReplicatedStorage:FindFirstChild("FABPedirCabine")
+		if ped then
+			ped:FireServer(P.Id)
+			malha = pastaMalhas:WaitForChild("Sim_" .. P.Id, 20)
+		end
+	end
 	obj.Animadas = {}
 	obj.Trem = {}
 	if malha then
