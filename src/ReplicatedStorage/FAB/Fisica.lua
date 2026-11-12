@@ -30,6 +30,10 @@
 
 local Fisica = {}
 
+-- modulo do helicoptero (no Roblox fica ao lado deste; fora dele, via package.path)
+local Heli
+if script then Heli = require(script.Parent:WaitForChild("FisicaHeli")) else Heli = require("FisicaHeli") end
+
 local sqrt, sin, cos, abs, exp, floor = math.sqrt, math.sin, math.cos, math.abs, math.exp, math.floor
 local atan2 = math.atan2 or function(y, x) return math.atan(y, x) end
 local asin = math.asin
@@ -167,6 +171,7 @@ function Fisica.Novo(P, ini)
 	s.TempoGNeg = 0
 	s.MotorCortadoAte = 0
 	s.Var = ini.Velocidade or 0
+	if P.Tipo == "helicoptero" then Heli.Iniciar(s) end
 	Fisica.Calcular(s)
 	return s
 end
@@ -204,6 +209,7 @@ Fisica.Falhar = falhar
 -- Um subpasso de integracao
 local function subpasso(s, dt, e)
 	local P = s.P
+	if P.Tipo == "helicoptero" then return Heli.Subpasso(s, dt, e, Fisica) end
 	local m = P.Massa + s.Combustivel
 
 	-- atuadores (flape, trem, freio aerodinamico)

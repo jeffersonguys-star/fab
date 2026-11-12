@@ -37,6 +37,9 @@ jobs:
       - name: Testar o modelo de voo
         run: lua5.1 teste/teste_fisica.lua decolagem | tail -20
 
+      - name: Teste da fisica do helicoptero
+        run: lua5.1 teste/teste_heli.lua | tail -30
+
       - name: Enviar malhas 3D novas para o Roblox
         continue-on-error: true
         env:

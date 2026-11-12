@@ -209,4 +209,43 @@ Aeronaves.F39 = {
 	VR = 78, VAprox = 75, VCruzeiro = 250, VMaxTrem = 135,
 }
 
+-- Helicoptero utilitario (UH-60 Black Hawk). Fora da lista do menu ate ter cabine e modelo proprios.
+Aeronaves.H60 = {
+	Id = "H60", Nome = "H-60 Black Hawk", Funcao = "Transporte e busca e salvamento",
+	Tipo = "helicoptero", Cabine = "analogica", Assentos = "lado",
+	Olho = { 0.5, 0.75, -3.1 },
+	Massa = 5300, Combustivel = 1360,
+	Irolagem = 6500, Iarfagem = 42000, Iguinada = 38000,
+	-- rotor principal
+	RaioRotor = 8.18, Solidez = 0.082, RotacaoNominal = 27, InclinacaoCL = 5.7, CD0Pa = 0.011,
+	ColetivoMin = 0.02, ColetivoMax = 0.22, InerciaRotor = 8500, FatorInduzido = 1.15,
+	AlturaMastro = 1.95, PosicaoMastro = 0, InclinacaoMastro = 0.05, InclinacaoMaxDisco = 0.2,
+	RigidezCuboArf = 300000, RigidezCuboRol = 50000, AtrasoDisco = 0.1,
+	-- motor (2 x T700) e rotor de cauda
+	PotenciaMotor = 2.4e6, TempoMotor = 12, ConsumoEspecifico = 1e-7,
+	BracoCauda = 9.8, TracaoCaudaMax = 14000, AlturaCauda = 1.8, TaxaGuinadaMax = 0.7, GanhoGuinada = 0.9,
+	-- fuselagem (areas equivalentes de placa plana, m2)
+	AreaPlana = 2.4, AreaLateral = 6, AreaVertical = 5, AreaEstab = 3.5, AreaDeriva = 3.0,
+	BracoEstab = 8.5, BracoDeriva = 8.5, AmortGuinada = 4000, SensibilidadeRajada = 0.9,
+	-- ajudas de estabilidade
+	FrequenciaAtitude = 2.4, GanhoVelocidade = 0.04, ArfagemMaxCima = 15, ArfagemMaxBaixo = 8, RolagemMax = 30,
+	AlfaEstol = math.rad(30), MargemAvisoEstol = 4,
+	AlturaTrem = 1.9, TremRetratil = false,
+	Rodas = {
+		{ -1.35, -1.9, -0.45, 250000, 45000, 0.45, false, true },
+		{ 1.35, -1.9, -0.45, 250000, 45000, 0.45, false, true },
+		{ 0, -1.2, 8.2, 40000, 8000, 0.4, true, false },
+	},
+	Estrutura = {
+		{ 0, -1.0, -6.0, "O nariz tocou o solo" },
+		{ 0, -0.1, 9.7, "A cauda tocou o solo" },
+		{ 0, -1.55, 0, "Pouso de barriga" },
+		{ 1.45, 0, 0, "A aeronave tombou" },
+		{ -1.45, 0, 0, "A aeronave tombou" },
+		{ 0, 2.0, 0, "A aeronave capotou" },
+	},
+	GLimite = 3.5, GNegLimite = -1, VNE = 82, LimitePouso = 3.5, VelocidadeMaxGrama = 25,
+	VR = 0, VAprox = 30, VCruzeiro = 70, VMaxFlap = 0, VMaxTrem = 0,
+}
+
 return Aeronaves
