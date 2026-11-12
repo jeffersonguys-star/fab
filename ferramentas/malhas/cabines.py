@@ -451,12 +451,20 @@ def construir(spec):
         else:
             cu = 0.0
             base_motor = 0.21
-        mostrador("ASI", cu - 0.1, 0.08, d)
-        mostrador("Atitude", cu, 0.08, d)
-        mostrador("ALT", cu + 0.1, 0.08, d)
-        mostrador("Curva", cu - 0.1, -0.03, d)
-        mostrador("HI", cu, -0.03, d)
-        mostrador("VSI", cu + 0.1, -0.03, d)
+        v1, v2 = (0.13, 0.03) if tipo == "analogico_lado" else (0.08, -0.03)
+        mostrador("ASI", cu - 0.1, v1, d)
+        mostrador("Atitude", cu, v1, d)
+        mostrador("ALT", cu + 0.1, v1, d)
+        mostrador("Curva", cu - 0.1, v2, d)
+        mostrador("HI", cu, v2, d)
+        mostrador("VSI", cu + 0.1, v2, d)
+        if tipo == "analogico_lado":
+            # terceira fileira do piloto e segunda coluna de instrumentos de motor (painel real do T-25)
+            mostrador("Relogio", cu - 0.1, -0.07, d)
+            mostrador("Temp", cu, -0.07, d)
+            mostrador("G", cu + 0.1, -0.07, d)
+            for nome_i, vi in (("Temp", 0.13), ("Relogio", 0.06), ("Comb", -0.01)):
+                mostrador(nome_i, -0.115, vi, 0.058)
         mostrador("RPM", base_motor, 0.13, 0.058)
         mostrador("Comb", base_motor, 0.06, 0.058)
         mostrador("G", base_motor, -0.01 if tipo == "analogico" else -0.01, 0.058)
@@ -474,7 +482,10 @@ def construir(spec):
                     seletor_g = Grupo()
                     seletor(seletor_g, G["legenda"], 0.29 + j * 0.06, 0.14 - k * 0.055, 0.008)
                     G["preto"].add(qp.malha(seletor_g.malha().mover(0, 0, 0.03)))
-            placas_superficie(qp, -painel_w / 2 + 0.02, 0.24, -alt_painel / 2 + 0.02, -0.1, rng, G, 0.9)
+            placas_superficie(qp, -painel_w / 2 + 0.02, 0.24, -alt_painel / 2 + 0.02, -0.12, rng, G, 0.9)
+            for fila in range(3):
+                for col in range(14):
+                    G["preto"].add(qp.malha(cilindro(0.0075, 0.012, 10, "z").mover(0.18 + col * 0.0185, -0.13 - fila * 0.026, 0.006)))
         luzes_alerta = [(cu - 0.2, 0.15), (cu + 0.2, 0.15)] if tipo == "analogico" else [(-0.5, 0.15)]
     for u, v in luzes_alerta:
         G["moldura"].add(qp.malha(caixa(0.04, 0.024, 0.014, 0.003).mover(u, v, 0.007)))
