@@ -222,7 +222,11 @@ function CTRL.Criar(UI, P, opcoes)
 		if math.abs(d) <= passo then return alvo end
 		return atual + passo * (d > 0 and 1 or -1)
 	end
-	local function expo(x) return (x >= 0 and 1 or -1) * math.abs(x) ^ 1.5 end
+	-- zona morta e curva exponencial: pequenos movimentos do dedo mexem pouco, o curso total continua inteiro
+local function expo(x)
+		local a = math.max(math.abs(x) - 0.07, 0) / 0.93
+		return (x >= 0 and 1 or -1) * a ^ 2.1
+	end
 	table.insert(conexoes, RunService.RenderStepped:Connect(function(dt)
 		local K = Enum.KeyCode
 		local alvoArf = 0
@@ -234,8 +238,8 @@ function CTRL.Criar(UI, P, opcoes)
 		local alvoLeme = 0
 		if teclas[K.E] or teclas.LemeD then alvoLeme = alvoLeme + 1 end
 		if teclas[K.Q] or teclas.LemeE then alvoLeme = alvoLeme - 1 end
-		tecArf = rampa(tecArf, alvoArf, dt, alvoArf == 0 and 4 or 1.8)
-		tecRol = rampa(tecRol, alvoRol, dt, alvoRol == 0 and 5 or 2.5)
+		tecArf = rampa(tecArf, alvoArf, dt, alvoArf == 0 and 4 or 1.1)
+		tecRol = rampa(tecRol, alvoRol, dt, alvoRol == 0 and 5 or 1.5)
 		tecLeme = rampa(tecLeme, alvoLeme, dt, 3)
 		E.Arfagem = math.clamp(expo(mancheY) + tecArf, -1, 1)
 		E.Rolagem = math.clamp(expo(mancheX) + tecRol, -1, 1)

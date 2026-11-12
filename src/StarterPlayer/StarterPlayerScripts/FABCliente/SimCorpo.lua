@@ -80,6 +80,13 @@ function CORPO.Criar(P, pasta)
 	local k = ESCALA
 	-- cabeca e acessorios invisiveis em primeira pessoa
 	cabeca.Transparency = 1
+	torso.Transparency = 1 -- tronco e pernas invisiveis: so bracos e maos aparecem
+	pE.Transparency, pD.Transparency = 1, 1
+	for _, p in ipairs({ torso, pE, pD }) do
+		for _, d in ipairs(p:GetDescendants()) do
+			if d:IsA("Decal") or d:IsA("Texture") then d.Transparency = 1 end
+		end
+	end
 	for _, d in ipairs(cabeca:GetDescendants()) do
 		if d:IsA("Decal") then d.Transparency = 1 end
 	end
@@ -141,6 +148,8 @@ function CORPO.Criar(P, pasta)
 		return nil
 	end
 
+	-- o braco do lado do manche segura o manche; o outro, a manete
+	local mancheDireita = pManche.X >= pManete.X
 	local estado = { Fase = "repouso", T = 0, Alvo = nil, Dur = 0 }
 	local posEsq = topoManete({ Manete = 0.4 })
 	local cfRaiz = CFrame.new()
@@ -202,7 +211,7 @@ function CORPO.Criar(P, pasta)
 		-- inclina o tronco quando o alvo esta longe do alcance do braco
 		local alvoInc, alvoLado = 0, 0
 		if estado.Fase == "ir" or estado.Fase == "apertar" then
-			local dist = (estado.Alvo - ombroE).Magnitude
+			local dist = (estado.Alvo - (mancheDireita and ombroE or ombroD)).Magnitude
 			alvoInc = math.clamp((dist - 1.55 * k) / (1.3 * k), 0, 1)
 			alvoLado = math.clamp((ox - estado.Alvo.X) / (2.2 * k), -1, 1)
 		end
@@ -219,8 +228,13 @@ function CORPO.Criar(P, pasta)
 
 		torso.CFrame = cf * cfTorso
 		cabeca.CFrame = cf * (cfTorso * CFrame.new(0, 1.5 * k, 0))
-		braco(bE, ombroE, posEsq)
-		braco(bD, ombroD, alvoD)
+		if mancheDireita then
+			braco(bE, ombroE, posEsq)
+			braco(bD, ombroD, alvoD)
+		else
+			braco(bD, ombroD, posEsq)
+			braco(bE, ombroE, alvoD)
+		end
 		perna(pE, noTorso(-0.5, -1, 0), -1)
 		perna(pD, noTorso(0.5, -1, 0), 1)
 	end
