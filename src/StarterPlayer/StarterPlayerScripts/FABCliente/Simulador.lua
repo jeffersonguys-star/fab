@@ -402,7 +402,9 @@ function SIM.Iniciar(UI)
 			ctx.RuidoB = (ctx.RuidoB or 0) + ((math.random() - 0.5) * 2 - (ctx.RuidoB or 0)) * math.min(1, dt * 6)
 			local tremor = CFrame.Angles(ctx.RuidoA * amp * 0.5, ctx.RuidoB * amp * 0.5, 0)
 			local cabeca = CFrame.Angles(-math.clamp(((s.NzFiltrado or 1) - 1) * 0.004, -0.02, 0.04), 0, 0)
-			local olho = cf * CFrame.new(P2.Olho[1] * E, P2.Olho[2] * E, P2.Olho[3] * E)
+			local dc = corpo and corpo.Desloc or Vector3.zero
+			local gc = corpo and corpo.Giro or CFrame.new()
+			local olho = cf * CFrame.new(dc) * CFrame.new(P2.Olho[1] * E, P2.Olho[2] * E, P2.Olho[3] * E) * gc
 				* CFrame.Angles(0, math.rad(ctrl.OlharYaw), 0) * CFrame.Angles(math.rad(ctrl.OlharPitch), 0, 0) * cabeca * tremor
 			camera.CFrame = olho
 			cab.Atualizar(cf, s, e, dt)

@@ -87,10 +87,19 @@ function CORPO.Criar(P, pasta)
 	local ox, oy, oz = lay.Olho[1] * E, lay.Olho[2] * E, lay.Olho[3] * E
 	local pManche = Vector3.new(lay.Manche.Pivo[1], lay.Manche.Pivo[2], lay.Manche.Pivo[3]) * E
 	local pManete = Vector3.new(lay.Manete.Pivo[1], lay.Manete.Pivo[2], lay.Manete.Pivo[3]) * E
-	local inclina = CFrame.Angles(math.rad(-9), 0, 0)
-	local cfTorso = CFrame.new(ox, oy - 1.5 * k, oz + 0.15 * k) * inclina
+	-- o corpo gira em torno do quadril; "inclinacao" (0 a 1) inclina o tronco para alcancar longe
+	local quadril = Vector3.new(ox, oy - 2.5 * k, oz + 0.15 * k)
+	local inclinacao, inclinaLado = 0, 0
+	local function cfTroncoCom(inc, lado)
+		local rot = CFrame.Angles(math.rad(-9 - 28 * inc), 0, math.rad(lado * 20 * inc))
+		return CFrame.new(quadril) * rot * CFrame.new(0, 1 * k, 0)
+	end
+	local cfTorso = cfTroncoCom(0, 0)
+	local cfTronco0 = cfTorso
 	local function noTorso(x, y, z) return cfTorso * Vector3.new(x * k, y * k, z * k) end
 	local ombroE, ombroD = noTorso(-1, 0.5, 0), noTorso(1, 0.5, 0)
+	obj.Desloc = Vector3.zero
+	obj.Giro = CFrame.new()
 
 	local function topoManche(e)
 		local arf = math.clamp(e.Arfagem or 0, -1, 1)
@@ -181,6 +190,24 @@ function CORPO.Criar(P, pasta)
 		end
 		posEsq = alvoE
 		local alvoD = topoManche(e)
+
+		-- inclina o tronco quando o alvo esta longe do alcance do braco
+		local alvoInc, alvoLado = 0, 0
+		if estado.Fase == "ir" or estado.Fase == "apertar" then
+			local dist = (estado.Alvo - ombroE).Magnitude
+			alvoInc = math.clamp((dist - 1.55 * k) / (1.3 * k), 0, 1)
+			alvoLado = math.clamp((ox - estado.Alvo.X) / (2.2 * k), -1, 1)
+		end
+		local a = math.min(1, dt * 7)
+		inclinacao = inclinacao + (alvoInc - inclinacao) * a
+		inclinaLado = inclinaLado + (alvoLado - inclinaLado) * a
+		cfTorso = cfTroncoCom(inclinacao, inclinaLado)
+		ombroE, ombroD = noTorso(-1, 0.5, 0), noTorso(1, 0.5, 0)
+		-- a camera acompanha a cabeca (posicao inteira, giro pela metade)
+		local cabecaPos = cfTorso * Vector3.new(0, 1.5 * k, 0)
+		local cabecaRepouso = cfTronco0 * Vector3.new(0, 1.5 * k, 0)
+		obj.Desloc = cabecaPos - cabecaRepouso
+		obj.Giro = CFrame.Angles(math.rad(-28 * inclinacao * 0.5), 0, math.rad(inclinaLado * 20 * inclinacao * 0.5))
 
 		torso.CFrame = cf * cfTorso
 		cabeca.CFrame = cf * (cfTorso * CFrame.new(0, 1.5 * k, 0))
