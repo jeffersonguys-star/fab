@@ -1,7 +1,7 @@
 --[[
 	FAB - Corpo do piloto na cabine (cliente)
 
-	Clona o personagem R6 do jogador, senta o corpo no assento e anima:
+	Clona o personagem R15 do jogador (bracos com camisa e mangas), senta o corpo no assento e anima:
 	- mao direita sempre no manche (acompanha o movimento do manche);
 	- mao esquerda na manete; para apertar um botao, interruptor ou alavanca ela sai da manete,
 	  alcanca o ponto, aperta e volta. A mao do manche nunca sai do manche.
@@ -38,18 +38,18 @@ function CORPO.Criar(P, pasta)
 	local char = jogador.Character
 	local lay = LAYOUT[P.Id]
 	if not lay or not lay.Manche or not lay.Manete then obj.Erro = "layout sem manche/manete" return nil, obj.Erro end
+	-- corpo R15: bracos redondos com a camisa e as mangas do proprio avatar (nada de bloco R6)
 	local ok, clone
-	if char and char:FindFirstChild("Torso") then
+	if char and char:FindFirstChild("LeftUpperArm") then
 		ok, clone = pcall(function() return char:Clone() end)
 	else
-		-- o jogo nao esta em R6: monta um corpo R6 com a aparencia do jogador
 		ok, clone = pcall(function()
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
 			local desc = hum and hum:GetAppliedDescription() or Players:GetHumanoidDescriptionFromUserId(jogador.UserId)
-			return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R6)
+			return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
 		end)
 	end
-	if not ok or not clone then return nil, "nao foi possivel montar o corpo R6: " .. tostring(clone) end
+	if not ok or not clone then return nil, "nao foi possivel montar o corpo R15: " .. tostring(clone) end
 	clone.Name = "CorpoPiloto"
 	for _, d in ipairs(clone:GetDescendants()) do
 		if d:IsA("Script") or d:IsA("LocalScript") then d:Destroy() end
@@ -60,36 +60,36 @@ function CORPO.Criar(P, pasta)
 		hum.PlatformStand = true
 	end
 	local function peca(nome) return clone:FindFirstChild(nome) end
-	local torso, cabeca = peca("Torso"), peca("Head")
-	local bE, bD, pE, pD = peca("Left Arm"), peca("Right Arm"), peca("Left Leg"), peca("Right Leg")
-	local raizHum = peca("HumanoidRootPart")
-	if not (torso and cabeca and bE and bD and pE and pD) then clone:Destroy() return nil, "corpo sem as pecas R6" end
+	local cabeca = peca("Head")
+	local pedacos = {
+		E = { peca("LeftUpperArm"), peca("LeftLowerArm"), peca("LeftHand") },
+		D = { peca("RightUpperArm"), peca("RightLowerArm"), peca("RightHand") },
+	}
+	if not (cabeca and pedacos.E[3] and pedacos.D[3] and pedacos.E[1] and pedacos.D[1] and pedacos.E[2] and pedacos.D[2]) then
+		clone:Destroy() return nil, "corpo sem as pecas R15"
+	end
+	local visiveis = {}
+	for _, lado in pairs(pedacos) do for _, q in ipairs(lado) do visiveis[q] = true end end
 	for _, d in ipairs(clone:GetDescendants()) do
 		if d:IsA("BasePart") then
 			d.Anchored = true
 			d.CanCollide = false
 			d.CanQuery = false
 			d.CanTouch = false
+			if not visiveis[d] then
+				d.Transparency = 1
+				for _, f in ipairs(d:GetChildren()) do
+					if f:IsA("Decal") or f:IsA("Texture") then f.Transparency = 1 end
+				end
+			end
 		elseif d:IsA("Motor6D") or d:IsA("Weld") then
 			d.Enabled = false
 		end
 	end
+	local raizHum = peca("HumanoidRootPart")
 	if raizHum then raizHum.Transparency = 1 end
 	pcall(function() clone:ScaleTo(ESCALA) end)
-	local tamBraco = Vector3.new(1, 2, 1)
 	local k = ESCALA
-	-- cabeca e acessorios invisiveis em primeira pessoa
-	cabeca.Transparency = 1
-	torso.Transparency = 1 -- tronco e pernas invisiveis: so bracos e maos aparecem
-	pE.Transparency, pD.Transparency = 1, 1
-	for _, p in ipairs({ torso, pE, pD }) do
-		for _, d in ipairs(p:GetDescendants()) do
-			if d:IsA("Decal") or d:IsA("Texture") then d.Transparency = 1 end
-		end
-	end
-	for _, d in ipairs(cabeca:GetDescendants()) do
-		if d:IsA("Decal") then d.Transparency = 1 end
-	end
 	for _, d in ipairs(clone:GetChildren()) do
 		if d:IsA("Accessory") then
 			local h = d:FindFirstChild("Handle")
@@ -155,24 +155,32 @@ function CORPO.Criar(P, pasta)
 	local posEsq = topoManete({ Manete = 0.4 })
 	local cfRaiz = CFrame.new()
 
-	-- braco: do ombro ate o alvo da mao (comprimento ajustado ate 2,3x) ------------------------
-	local function braco(parte, ombro, alvo)
+	-- braco de duas articulacoes (ombro, cotovelo, punho) que termina com a mao no alvo ---------
+	local function braco(lado, ombro, alvo)
+		local sup, inf, mao = pedacos[lado][1], pedacos[lado][2], pedacos[lado][3]
+		local L1, L2, LM = sup.Size.Y, inf.Size.Y, mao.Size.Y
+		local sinal = (lado == "E") and -1 or 1
 		local v = alvo - ombro
 		local d = v.Magnitude
 		if d < 0.05 then return end
 		local dir = v.Unit
-		local maxAlc = tamBraco.Y * k * 2.3
-		if d > maxAlc then d = maxAlc end
-		local comp = math.max(tamBraco.Y * k, d + 0.5 * k)
-		parte.Size = Vector3.new(tamBraco.X * k * 0.6, comp, tamBraco.Z * k * 0.6)
-		local centro = ombro + dir * ((d - 0.5 * k) / 2)
-		parte.CFrame = cfRaiz * orientar(centro, dir)
-	end
-
-	local function perna(parte, quadril, lado)
-		local dir = Vector3.new(lado * 0.05, -0.62, -0.78).Unit
-		local centro = quadril + dir * (1 * k)
-		parte.CFrame = cfRaiz * orientar(centro, dir)
+		-- punho = alvo recuado meia mao; se estiver alem do alcance, a mao fica na ponta do braco
+		local punho = alvo - dir * (LM * 0.5)
+		local dp = (punho - ombro).Magnitude
+		local alcance = (L1 + L2) * 0.995
+		if dp > alcance then dp = alcance end
+		local dirP = (punho - ombro).Unit
+		punho = ombro + dirP * dp
+		local a = (L1 * L1 - L2 * L2 + dp * dp) / (2 * dp)
+		local h = math.sqrt(math.max(L1 * L1 - a * a, 0))
+		local pole = Vector3.new(sinal * 0.55, -1, 0.35)
+		local perp = pole - dirP * pole:Dot(dirP)
+		perp = (perp.Magnitude > 1e-3) and perp.Unit or Vector3.yAxis
+		local cotovelo = ombro + dirP * a + perp * h
+		sup.CFrame = cfRaiz * orientar((ombro + cotovelo) / 2, cotovelo - ombro)
+		inf.CFrame = cfRaiz * orientar((cotovelo + punho) / 2, punho - cotovelo)
+		local dirM = (punho - cotovelo).Unit
+		mao.CFrame = cfRaiz * orientar(punho + dirM * (LM * 0.5), dirM)
 	end
 
 	function obj.Alcancar(nome, cab)
@@ -227,17 +235,14 @@ function CORPO.Criar(P, pasta)
 		obj.Desloc = cabecaPos - cabecaRepouso
 		obj.Giro = CFrame.Angles(math.rad(-28 * inclinacao * 0.5), 0, math.rad(inclinaLado * 20 * inclinacao * 0.5))
 
-		torso.CFrame = cf * cfTorso
 		cabeca.CFrame = cf * (cfTorso * CFrame.new(0, 1.5 * k, 0))
 		if mancheDireita then
-			braco(bE, ombroE, posEsq)
-			braco(bD, ombroD, alvoD)
+			braco("E", ombroE, posEsq)
+			braco("D", ombroD, alvoD)
 		else
-			braco(bD, ombroD, posEsq)
-			braco(bE, ombroE, alvoD)
+			braco("D", ombroD, posEsq)
+			braco("E", ombroE, alvoD)
 		end
-		perna(pE, noTorso(-0.5, -1, 0), -1)
-		perna(pD, noTorso(0.5, -1, 0), 1)
 	end
 
 	function obj.Destruir()
