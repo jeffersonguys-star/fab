@@ -76,7 +76,14 @@ function CORPO.Criar(P, pasta)
 			d.CanCollide = false
 			d.CanQuery = false
 			d.CanTouch = false
-			if not visiveis[d] then
+			if visiveis[d] then
+				d.Material = Enum.Material.SmoothPlastic
+				d.Reflectance = 0
+				d.Transparency = 0
+				for _, f in ipairs(d:GetChildren()) do
+					if f:IsA("SurfaceAppearance") then f:Destroy() end
+				end
+			else
 				d.Transparency = 1
 				for _, f in ipairs(d:GetChildren()) do
 					if f:IsA("Decal") or f:IsA("Texture") then f.Transparency = 1 end
@@ -90,6 +97,10 @@ function CORPO.Criar(P, pasta)
 	if raizHum then raizHum.Transparency = 1 end
 	pcall(function() clone:ScaleTo(ESCALA) end)
 	local k = ESCALA
+	local tams = {}
+	for lado, q in pairs(pedacos) do
+		tams[lado] = { q[1].Size.Y, q[2].Size.Y, q[3].Size.Y, q[1].Size, q[2].Size }
+	end
 	for _, d in ipairs(clone:GetChildren()) do
 		if d:IsA("Accessory") then
 			local h = d:FindFirstChild("Handle")
@@ -158,7 +169,12 @@ function CORPO.Criar(P, pasta)
 	-- braco de duas articulacoes (ombro, cotovelo, punho) que termina com a mao no alvo ---------
 	local function braco(lado, ombro, alvo)
 		local sup, inf, mao = pedacos[lado][1], pedacos[lado][2], pedacos[lado][3]
-		local L1, L2, LM = sup.Size.Y, inf.Size.Y, mao.Size.Y
+		local T = tams[lado]
+		local dist = (alvo - ombro).Magnitude
+		local f = math.clamp(dist / ((T[1] + T[2] + T[3] * 0.5) * 0.97), 1, 1.35)
+		local L1, L2, LM = T[1] * f, T[2] * f, T[3]
+		sup.Size = Vector3.new(T[4].X, L1, T[4].Z)
+		inf.Size = Vector3.new(T[5].X, L2, T[5].Z)
 		local sinal = (lado == "E") and -1 or 1
 		local v = alvo - ombro
 		local d = v.Magnitude
@@ -173,7 +189,7 @@ function CORPO.Criar(P, pasta)
 		punho = ombro + dirP * dp
 		local a = (L1 * L1 - L2 * L2 + dp * dp) / (2 * dp)
 		local h = math.sqrt(math.max(L1 * L1 - a * a, 0))
-		local pole = Vector3.new(sinal * 0.55, -1, 0.35)
+		local pole = Vector3.new(sinal * 0.1, -1, 0.6)
 		local perp = pole - dirP * pole:Dot(dirP)
 		perp = (perp.Magnitude > 1e-3) and perp.Unit or Vector3.yAxis
 		local cotovelo = ombro + dirP * a + perp * h

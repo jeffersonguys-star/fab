@@ -137,7 +137,7 @@ def carregar_fonte():
     return pecas, ext, esc, todos[:, 0].max()
 
 
-def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True, sem_regiao_cabine=False, trem=True):
+def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True, sem_regiao_cabine=False, trem=True, transp_vidro=0.55):
     Vs, Fs, n = [], [], 0
     for p in ext:
         Vs.append(para_jogo(p["V"], esc, x_max))
@@ -175,7 +175,7 @@ def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True, sem_regia
         for p in pecas:
             if p["nome"] == "Object_15":
                 Vg = para_jogo(p["V"], esc, x_max)
-                cena.adicionar("Canopi", Malha(Vg, p["F"], suave=True), (150, 190, 205), "Glass", transparencia=0.55)
+                cena.adicionar("Canopi", Malha(Vg, p["F"], suave=True), (150, 190, 205), "Glass", transparencia=transp_vidro)
     adicionar_armamento(cena, pecas, esc, x_max)
     adicionar_cocares(cena, V, I)
     return trem_gripen(cena) if trem else {}
@@ -305,7 +305,7 @@ def cabine_sim():
     import cabines
     pecas, ext, esc, x_max = carregar_fonte()
     cena = Cena()
-    art = adicionar_exterior(cena, pecas, ext, esc, x_max, int(os.environ.get("ALVO_SIM", 38000)), vidro=False, sem_regiao_cabine=True)
+    art = adicionar_exterior(cena, pecas, ext, esc, x_max, int(os.environ.get("ALVO_SIM", 38000)), vidro=True, sem_regiao_cabine=True, transp_vidro=0.8)
     V, F, C = construir_cabine(pecas, esc, x_max, int(os.environ.get("ALVO_CABINE", 70000)))
     cf = C[F].mean(axis=1)
     cf = np.clip(cf * 1.2 + 16, 0, 255)  # a textura original e bem escura; clareia um pouco
@@ -326,9 +326,9 @@ def cabine_sim():
     cena.adicionar("Manete", cabines.manete(mx, my + 0.02, mz), (84, 86, 90), "SmoothPlastic", rug=0.6)
     lay["Manete"] = {"Pivo": [mx, my + 0.02, mz]}
     from malha import caixa
-    cena.adicionar("PainelChaves", caixa(0.1, 0.02, 0.62, 0.004).mover(-0.36, 0.735, -3.95), (44, 46, 50), "SmoothPlastic", rug=0.6)
+    cena.adicionar("PainelChaves", caixa(0.1, 0.02, 0.62, 0.004).mover(-0.27, 0.735, -3.95), (44, 46, 50), "SmoothPlastic", rug=0.6)
     ids = ["Bateria", "Bomba", "Ignicao", "Partida", "Luzes", "FreioEst"]
-    lay["Interruptores"] = [{"Id": i, "P": [-0.36, 0.745, -4.2 + 0.1 * n], "R": [0, 0, 0]} for n, i in enumerate(ids)]
+    lay["Interruptores"] = [{"Id": i, "P": [-0.27, 0.745, -4.2 + 0.1 * n], "R": [0, 0, 0]} for n, i in enumerate(ids)]
     # telas: tres MFDs do painel (posicoes medidas na malha original)
     inc = -11
     lay["Telas"] = [
