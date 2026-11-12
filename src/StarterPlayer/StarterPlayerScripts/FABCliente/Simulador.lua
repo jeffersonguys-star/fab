@@ -365,8 +365,11 @@ function SIM.Iniciar(UI)
 			local P2 = s.P
 			if s.AvisoEstol then amp = amp + 0.003 + 0.02 * math.clamp(((s.Alfa or 0) - (P2.AlfaEstol - math.rad(4))) / math.rad(4), 0, 1) end
 			if (s.Mach or 0) > 0.95 and (s.Mach or 0) < 1.08 then amp = amp + 0.008 end
-			if s.EmSolo then amp = amp + 0.0025 * math.clamp((s.V or 0) / 40, 0, 1) end
-			local tremor = CFrame.Angles((math.random() - 0.5) * amp, (math.random() - 0.5) * amp, 0)
+			if s.EmSolo then amp = amp + 0.0006 * math.clamp((s.V or 0) / 40, 0, 1) end
+			-- ruido filtrado (suave), nao um sorteio novo a cada quadro
+			ctx.RuidoA = (ctx.RuidoA or 0) + ((math.random() - 0.5) * 2 - (ctx.RuidoA or 0)) * math.min(1, dt * 6)
+			ctx.RuidoB = (ctx.RuidoB or 0) + ((math.random() - 0.5) * 2 - (ctx.RuidoB or 0)) * math.min(1, dt * 6)
+			local tremor = CFrame.Angles(ctx.RuidoA * amp * 0.5, ctx.RuidoB * amp * 0.5, 0)
 			local cabeca = CFrame.Angles(-math.clamp(((s.NzFiltrado or 1) - 1) * 0.004, -0.02, 0.04), 0, 0)
 			local olho = cf * CFrame.new(P2.Olho[1] * E, P2.Olho[2] * E, P2.Olho[3] * E)
 				* CFrame.Angles(0, math.rad(ctrl.OlharYaw), 0) * CFrame.Angles(math.rad(ctrl.OlharPitch), 0, 0) * cabeca * tremor

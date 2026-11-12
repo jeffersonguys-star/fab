@@ -32,14 +32,14 @@ function PV.Solo(x, z)
 		local naPista = math.abs(dx) <= LARG / 2 + 7 and math.abs(dz) <= MEIA + 60
 		local naTaxi = dx >= 25 and dx <= 345 and dz >= 1300 and dz <= 2020
 		local naTaxi2 = dx >= 20 and dx <= 345 and math.abs(dz - 1380) <= 12
-		if naPista or naTaxi or naTaxi2 then return ELEV, "pista" end
+		if naPista or naTaxi or naTaxi2 then return ELEV + 0.2, "pista" end
 		return ELEV, "grama"
 	end
 	return 0, "agua"
 end
 
 function PV.Inicio(P)
-	return { X = CX, Z = MEIA - 35, Y = ELEV + P.AlturaTrem - 0.03, Rumo = 0, Velocidade = 0, Manete = 0, Trem = 1, Flap = 0 }
+	return { X = CX, Z = MEIA - 35, Y = ELEV + 0.2 + P.AlturaTrem - 0.03, Rumo = 0, Velocidade = 0, Manete = 0, Trem = 1, Flap = 0 }
 end
 
 function PV.Criar(pasta)
@@ -96,33 +96,33 @@ function PV.Criar(pasta)
 			x = x2
 		end
 	end
-	laje("Areia", 2150, 3150, ELEV - 0.9, 1.8, Color3.fromRGB(214, 196, 150), Enum.Material.Sand)
-	laje("Grama", 1950, 2950, ELEV - 0.06, 0.12, Color3.fromRGB(84, 118, 62), Enum.Material.Grass)
+	laje("Areia", 2150, 3150, ELEV - 1.1, 1.8, Color3.fromRGB(214, 196, 150), Enum.Material.Sand)
+	laje("Grama", 1950, 2950, ELEV - 0.1, 0.2, Color3.fromRGB(84, 118, 62), Enum.Material.Grass)
 
 	-- PISTA ---------------------------------------------------------------------------------
-	local y0 = ELEV + 0.02
-	faixaZ("Acostamento", 0, -MEIA - 60, MEIA + 60, LARG + 14, y0, Color3.fromRGB(78, 79, 82), Enum.Material.Asphalt, 0.04)
-	faixaZ("Pista", 0, -MEIA - 60, MEIA + 60, LARG, y0 + 0.03, ASFALTO, Enum.Material.Asphalt, 0.05)
-	local ym = y0 + 0.08
+	local y0 = ELEV + 0.05
+	faixaZ("Acostamento", 0, -MEIA - 60, MEIA + 60, LARG + 14, y0, Color3.fromRGB(78, 79, 82), Enum.Material.Asphalt, 0.1)
+	faixaZ("Pista", 0, -MEIA - 60, MEIA + 60, LARG, y0 + 0.1, ASFALTO, Enum.Material.Asphalt, 0.1)
+	local ym = y0 + 0.2
 	for _, lado in ipairs({ -1, 1 }) do
 		faixaZ("LinhaBorda", lado * (LARG / 2 - 1.2), -MEIA, MEIA, 0.9, ym, BRANCO)
 	end
 	for z = -MEIA + 120, MEIA - 120, 50 do
-		parte("Eixo", Vector3.new(1.2, 0.04, 30), Vector3.new(0, ym, z), BRANCO)
+		parte("Eixo", Vector3.new(1.2, 0.08, 30), Vector3.new(0, ym, z), BRANCO)
 	end
 	-- cabeceiras: faixas, numeros e zona de toque
 	local function cabeceira(sinal, numero)
 		local zc = sinal * (MEIA - 6)
 		for i = -5, 5 do
 			if i ~= 0 then
-				parte("Cabeceira", Vector3.new(1.8, 0.04, 30), Vector3.new(i * 3.6, ym, zc - sinal * 15), BRANCO)
+				parte("Cabeceira", Vector3.new(1.8, 0.08, 30), Vector3.new(i * 3.6, ym, zc - sinal * 15), BRANCO)
 			end
 		end
 		for _, d in ipairs({ 150, 300, 450, 600 }) do
 			local largura = (d == 300) and 3 or 2
 			for _, lado in ipairs({ -1, 1 }) do
-				parte("ZonaToque", Vector3.new(largura, 0.04, d == 300 and 22 or 22), Vector3.new(lado * 9, ym, sinal * (MEIA - d - 12)), BRANCO)
-				parte("ZonaToque", Vector3.new(largura, 0.04, 22), Vector3.new(lado * 12.5, ym, sinal * (MEIA - d - 12)), BRANCO)
+				parte("ZonaToque", Vector3.new(largura, 0.08, d == 300 and 22 or 22), Vector3.new(lado * 9, ym, sinal * (MEIA - d - 12)), BRANCO)
+				parte("ZonaToque", Vector3.new(largura, 0.08, 22), Vector3.new(lado * 12.5, ym, sinal * (MEIA - d - 12)), BRANCO)
 			end
 		end
 		-- numero em sete segmentos; "cima" do numero aponta para o centro da pista
@@ -132,7 +132,7 @@ function PV.Criar(pasta)
 			local s = segs[ch]
 			local function seg(u, v, w, h)
 				-- u para a direita de quem aproxima, v para a frente (centro da pista)
-				parte("Numero", Vector3.new(w, 0.04, h), Vector3.new(sinal * u, ym, zc - sinal * (30 + 4 + v)), BRANCO)
+				parte("Numero", Vector3.new(w, 0.08, h), Vector3.new(sinal * u, ym, zc - sinal * (30 + 4 + v)), BRANCO)
 			end
 			local ux = cx
 			if s:find("a") then seg(ux, alt - t / 2, larg, t) end
@@ -176,11 +176,11 @@ function PV.Criar(pasta)
 	end
 
 	-- TAXIWAY E PATIO ---------------------------------------------------------------------------
-	parte("Taxiway", Vector3.new(310, 0.1, 23), Vector3.new(175, ELEV + 0.05, MEIA - 120), ASFALTO, Enum.Material.Asphalt)
-	parte("LinhaTaxi", Vector3.new(310, 0.04, 0.35), Vector3.new(175, ELEV + 0.12, MEIA - 120), Color3.fromRGB(240, 200, 20))
-	parte("Patio", Vector3.new(320, 0.12, 720), Vector3.new(185, ELEV + 0.06, MEIA + 160), CONCRETO, Enum.Material.Concrete)
+	parte("Taxiway", Vector3.new(310, 0.2, 23), Vector3.new(175, ELEV + 0.1, MEIA - 120), ASFALTO, Enum.Material.Asphalt)
+	parte("LinhaTaxi", Vector3.new(310, 0.08, 0.35), Vector3.new(175, ELEV + 0.24, MEIA - 120), Color3.fromRGB(240, 200, 20))
+	parte("Patio", Vector3.new(320, 0.3, 720), Vector3.new(185, ELEV + 0.15, MEIA + 160), CONCRETO, Enum.Material.Concrete)
 	for z = MEIA - 160, MEIA + 480, 40 do
-		parte("PosicaoAeronave", Vector3.new(0.4, 0.04, 22), Vector3.new(215, ELEV + 0.14, z), Color3.fromRGB(240, 200, 20))
+		parte("PosicaoAeronave", Vector3.new(0.4, 0.08, 22), Vector3.new(215, ELEV + 0.34, z), Color3.fromRGB(240, 200, 20))
 	end
 
 	-- HANGARES, TORRE E WINDSOCK --------------------------------------------------------------

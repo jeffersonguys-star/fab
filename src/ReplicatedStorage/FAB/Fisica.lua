@@ -406,7 +406,7 @@ local function subpasso(s, dt, e)
 				-- direcao da roda (a bequilha esterça)
 				local dx, dz, sx, sz = fhx, fhz, rhx, rhz
 				if roda[7] then
-					local ang = dr * P.DirecaoBequilha * limitar(1 - (V - 8) / 35, 0.15, 1)
+					local ang = limitar(dr + cRol * 0.5, -1, 1) * P.DirecaoBequilha * limitar(1 - (V - 8) / 35, 0.15, 1)
 					local ca, sa = cos(ang), sin(ang)
 					dx, dz = fhx * ca + rhx * sa, fhz * ca + rhz * sa
 					sx, sz = rhx * ca - fhx * sa, rhz * ca - fhz * sa
