@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from malha import Cena, Malha  # noqa: E402
 import aeronaves  # noqa: E402
 import gltf_leitor  # noqa: E402
+import decimar  # noqa: E402
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 FONTE = os.environ.get("GRIPEN_FONTE", os.path.join(RAIZ, "modelos_prontos", "gripen_jas39a"))
@@ -92,21 +93,18 @@ def construir_cabine(pecas, esc, x_max, alvo=110000):
         n += len(p["V"])
     V, I, C = np.vstack(Vs), np.vstack(Fs), np.vstack(Cs)
     print("cabine original:", len(I), "triangulos")
-    celula = 0.006
-    for _ in range(60):
-        q = np.floor((V - V.min(0)) / celula).astype(np.int64)
-        chave = (q[:, 0] * 100000 + q[:, 1]) * 100000 + q[:, 2]
-        _, inv, cont = np.unique(chave, return_inverse=True, return_counts=True)
-        novo = np.zeros((len(cont), 3)); cn = np.zeros((len(cont), 3))
-        np.add.at(novo, inv, V); np.add.at(cn, inv, C)
-        novo /= cont[:, None]; cn /= cont[:, None]
-        F = inv[I]
-        ok = (F[:, 0] != F[:, 1]) & (F[:, 1] != F[:, 2]) & (F[:, 0] != F[:, 2])
-        F = F[ok]
-        if len(F) <= alvo:
-            break
-        celula *= 1.1
-    print("cabine reduzida:", len(F), "celula", round(celula, 4))
+    # reduz cada peca original por colapso de arestas (proporcional ao tamanho), mantendo as cores
+    total = sum(len(p["F"]) for p in sel)
+    Vo, Fo, Co, n0 = [], [], [], 0
+    k = 0
+    for p in sel:
+        alvo_p = max(60, int(alvo * len(p["F"]) / total))
+        Vp = Vs[k]
+        Vd, Fd, Cd = decimar.decimar(Vp, p["F"], alvo_p, C=Cs[k])
+        Vo.append(Vd); Fo.append(Fd + n0); Co.append(Cd); n0 += len(Vd)
+        k += 1
+    novo, F, cn = np.vstack(Vo), np.vstack(Fo), np.vstack(Co)
+    print("cabine reduzida:", len(F))
     return novo, F, cn
 
 
@@ -142,12 +140,13 @@ def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True, sem_regia
     V = np.vstack(Vs)
     I = np.vstack(Fs)
     print("exterior original:", len(I), "triangulos, escala", round(esc, 4))
-    celula = 0.03
-    for _ in range(60):
-        Vr, Fr = agrupar(V, I, celula)
-        if len(Fr) <= alvo:
-            break
-        celula *= 1.1
+    # solda vertices coincidentes (as pecas originais se encostam) e reduz por colapso de arestas
+    chave = np.round(V / 1e-4).astype(np.int64)
+    _, primeiro, inv = np.unique(chave, axis=0, return_index=True, return_inverse=True)
+    Vw = V[primeiro]
+    Iw = inv.reshape(-1)[I]
+    Vr, Fr = decimar.decimar(Vw, Iw, alvo)
+    celula = 0
     V, I = Vr, Fr
     c = V[I].mean(axis=1)
     if sem_regiao_cabine:
