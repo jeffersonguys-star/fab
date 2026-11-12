@@ -281,6 +281,12 @@ function Mapa.Construir(N)
 	N.Placas = N.Placas or {}
 	require(script.Parent:WaitForChild("MapaEnsino")).Construir(N, Mapa, raiz)
 	require(script.Parent:WaitForChild("MapaAerodromo")).Construir(N, Mapa, raiz)
+	for _, nome in ipairs({ "MapaVila", "MapaVeiculos", "MapaAvioes", "MapaVegetacao" }) do
+		local ok, err = pcall(function()
+			require(script.Parent:WaitForChild(nome)).Construir(N, Mapa, raiz)
+		end)
+		if not ok then warn("[FAB] " .. nome .. ": " .. tostring(err)) end
+	end
 	task.spawn(gerarTerreno)
 end
 
