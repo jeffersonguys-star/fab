@@ -157,8 +157,31 @@ function Fisica.Novo(P, ini)
 	s.Solo = function() return 0, "grama" end
 	-- deflexoes atuais das superficies (para animar a cabine e os comandos)
 	s.De, s.Da, s.Dr = 0, 0, 0
+	-- vento medio (m/s no mundo) e rajadas filtradas (turbulencia)
+	s.VentoX, s.VentoZ, s.Turbulencia = 0, 0, 0
+	s.Gx, s.Gy, s.Gz = 0, 0, 0
+	s.Buffet = 0
+	s.TempMotor = 60
+	s.EGT = 150
+	s.TempoSuperaq = 0
+	s.TempoGNeg = 0
+	s.MotorCortadoAte = 0
+	s.Var = ini.Velocidade or 0
 	Fisica.Calcular(s)
 	return s
+end
+
+-- Define o vento: rumo de onde ele sopra (graus), velocidade (m/s) e intensidade da turbulencia (0 a 2)
+function Fisica.DefinirVento(s, deRumo, velocidade, turbulencia)
+	local d = math.rad(deRumo or 0)
+	s.VentoX = -(velocidade or 0) * sin(d)
+	s.VentoZ = (velocidade or 0) * cos(d)
+	s.Turbulencia = turbulencia or 0
+end
+
+-- ruido gaussiano aproximado
+local function gauss()
+	return (math.random() + math.random() + math.random() + math.random() - 2) * 1.732
 end
 
 -- Converte forca no mundo para torque no corpo
@@ -201,10 +224,26 @@ local function subpasso(s, dt, e)
 	local rho, somV = Fisica.Atmosfera(s.py)
 	local sigma = rho / 1.225
 	local vx, vy, vz = s.vx, s.vy, s.vz
-	local V = sqrt(vx * vx + vy * vy + vz * vz)
-	local vbx = vx * s.ax + vy * s.ay + vz * s.az
-	local vby = vx * s.bx + vy * s.by + vz * s.bz
-	local vbz = vx * s.cx + vy * s.cy + vz * s.cz
+	local Vsolo = sqrt(vx * vx + vy * vy + vz * vz)
+	-- vento medio com cisalhamento perto do solo e rajadas (menos intensas perto do chao e em aeronaves pesadas)
+	local hv = math.max(s.py - (P.AlturaTrem or 1.5), 0)
+	local perfil = limitar((math.max(hv, 2) / 10) ^ 0.14, 0.7, 1.6)
+	local sigG = (s.Turbulencia or 0) * (P.SensibilidadeRajada or 1) * limitar(0.35 + hv / 600, 0.35, 1.2)
+	do
+		local tau = 2.5
+		local k = exp(-dt / tau)
+		local r = sqrt(1 - k * k) * sigG
+		s.Gx = s.Gx * k + r * gauss()
+		s.Gy = s.Gy * k + r * 0.6 * gauss()
+		s.Gz = s.Gz * k + r * gauss()
+	end
+	local wvx, wvy, wvz = s.VentoX * perfil + s.Gx, s.Gy, s.VentoZ * perfil + s.Gz
+	local vrx, vry, vrz = vx - wvx, vy - wvy, vz - wvz
+	local V = sqrt(vrx * vrx + vry * vry + vrz * vrz)
+	s.Var = V
+	local vbx = vrx * s.ax + vry * s.ay + vrz * s.az
+	local vby = vrx * s.bx + vry * s.by + vrz * s.bz
+	local vbz = vrx * s.cx + vry * s.cy + vrz * s.cz
 	local u = -vbz
 	local alfa, beta = 0, 0
 	if V > 2 then
@@ -258,6 +297,38 @@ local function subpasso(s, dt, e)
 			s.Combustivel = math.max(0, s.Combustivel - P.Consumo * (0.12 + 0.88 * fracao) * dt)
 		else
 			fracao = 0
+		end
+	end
+	-- corte por G negativo em motores com carburador (a bomba perde a succao)
+	if P.CarburadorNegG and ligado then
+		if s.Nz < 0.15 and not s.EmSolo then s.TempoGNeg = s.TempoGNeg + dt else s.TempoGNeg = math.max(0, s.TempoGNeg - dt * 2) end
+		if s.TempoGNeg > P.CarburadorNegG then
+			s.MotorCortadoAte = s.Tempo + 4
+			s.TempoGNeg = 0
+		end
+	end
+	if s.Tempo < s.MotorCortadoAte then
+		tracao = 0
+		fracao = 0
+		s.N = math.max(0, s.N - dt * 0.5)
+	end
+	-- temperaturas do motor (cabecote nos de helice, EGT nos a jato)
+	local tAmb = Fisica.Atmosfera(s.py) and select(3, Fisica.Atmosfera(s.py)) or 288
+	if P.Tipo == "jato" then
+		local alvoEGT = 120 + 560 * s.N ^ 1.6 + 220 * s.PosCombustor
+		s.EGT = s.EGT + (alvoEGT - s.EGT) * math.min(1, dt / 3)
+	else
+		local ventilacao = limitar(V / 55, 0, 1)
+		local alvoCHT = (tAmb - 273) + 30 + (P.TempCabecote or 170) * fracao ^ 1.2 * (1.12 - 0.42 * ventilacao)
+		s.TempMotor = s.TempMotor + (alvoCHT - s.TempMotor) * math.min(1, dt / 45)
+		if s.TempMotor > (P.TempMaxMotor or 260) then
+			s.TempoSuperaq = s.TempoSuperaq + dt
+			if s.TempoSuperaq > 20 then
+				s.FalhaMotor = true
+				s.AvisoMotor = "Motor superaqueceu e falhou"
+			end
+		else
+			s.TempoSuperaq = math.max(0, s.TempoSuperaq - dt * 0.5)
 		end
 	end
 	s.Tracao = tracao
@@ -333,7 +404,7 @@ local function subpasso(s, dt, e)
 		if P.Tipo ~= "jato" and ligado == false then cd = cd + (P.ArrastoHelice or 0) end
 		local cy = P.CYb * beta
 		local L, D, Y = qd * S * cl, qd * S * cd, qd * S * cy
-		local ux, uy, uz = vx / V, vy / V, vz / V
+		local ux, uy, uz = vrx / V, vry / V, vrz / V
 		local lx, ly, lz = normalizar(cruz(s.ax, s.ay, s.az, ux, uy, uz))
 		Fx = Fx + lx * L - ux * D + s.ax * Y
 		Fy = Fy + ly * L - uy * D + s.ay * Y
@@ -351,16 +422,21 @@ local function subpasso(s, dt, e)
 		if M > 0.95 then cma = cma * (1 + 1.2 * math.min(M - 0.95, 1)) end
 		local cm = P.Cm0 + cma * alfa + P.Cmde * de * fatorCauda * fatorMach + P.Cmq * qh
 			- (P.CmEstol or 0.08) * estol + (P.CmFlap or 0) * s.Flap
-		local amortRol = 1 - 0.6 * intensidadeEstol
+		local amortRol = 1 - (0.6 + (P.Parafuso or 0)) * intensidadeEstol
 		local clR = P.Clb * beta + P.Clp * ph * amortRol + P.Clr * rh + P.Clda * da * fatorMach
 			+ (P.QuedaAsa or 0.04) * intensidadeEstol * s.LadoEstol
 		local cn = P.Cnb * beta + P.Cnr * rh + P.Cndr * dr * fatorCauda + P.Cnda * da
+			+ (P.Parafuso or 0) * 0.05 * intensidadeEstol * s.LadoEstol
 		local Lr = qd * S * b * clR
 		local Mp = qd * S * c * cm
 		local Nr = qd * S * b * cn
 		-- torque e fator P da helice (puxa o nariz para a esquerda)
 		if P.Tipo ~= "jato" and P.TorqueHelice then
 			Nr = Nr - P.TorqueHelice * tracao * limitar(1 - V / 90, 0.25, 1)
+			-- fator P: a pa descendente puxa mais com o nariz alto e empurra a guinada para a esquerda
+			Nr = Nr - (P.FatorP or 0) * tracao * limitar(alfa, -0.1, 0.5)
+			-- reacao ao torque do motor: rola a aeronave contra o giro da helice
+			Lr = Lr - (P.TorqueRolagem or 0) * tracao * limitar(1 - V / 120, 0.3, 1)
 		end
 		Tx, Ty, Tz = Tx + Mp, Ty - Nr, Tz - Lr
 	end
@@ -408,7 +484,7 @@ local function subpasso(s, dt, e)
 				-- direcao da roda (a bequilha esterça)
 				local dx, dz, sx, sz = fhx, fhz, rhx, rhz
 				if roda[7] then
-					local ang = limitar(dr + cRol * 0.5, -1, 1) * P.DirecaoBequilha * limitar(1 - (V - 8) / 35, 0.15, 1)
+					local ang = limitar(dr + cRol * 0.5, -1, 1) * P.DirecaoBequilha * limitar(1 - (Vsolo - 8) / 35, 0.15, 1)
 					local ca, sa = cos(ang), sin(ang)
 					dx, dz = fhx * ca + rhx * sa, fhz * ca + rhz * sa
 					sx, sz = rhx * ca - fhx * sa, rhz * ca - fhz * sa
@@ -435,7 +511,7 @@ local function subpasso(s, dt, e)
 	end
 	if afundamentoMax > 0 and not s.EmSolo then
 		s.Toque = { Afundamento = afundamentoMax, Tempo = s.Tempo, Superficie = superficieAtual,
-			X = s.px, Z = s.pz, Inclinacao = s.Inclinacao or 0, Velocidade = V }
+			X = s.px, Z = s.pz, Inclinacao = s.Inclinacao or 0, Velocidade = Vsolo }
 		if afundamentoMax > P.LimitePouso then
 			falhar(s, "Pouso duro: o trem de pouso não suportou o impacto")
 			return
@@ -443,7 +519,7 @@ local function subpasso(s, dt, e)
 	end
 	s.EmSolo = emSolo
 	s.Superficie = superficieAtual
-	if emSolo and superficieAtual == "grama" and V > (P.VelocidadeMaxGrama or 40) then
+	if emSolo and superficieAtual == "grama" and Vsolo > (P.VelocidadeMaxGrama or 40) then
 		falhar(s, "A aeronave saiu da pista em alta velocidade")
 		return
 	end
@@ -476,7 +552,9 @@ local function subpasso(s, dt, e)
 	-- integracao rotacional (inercia diagonal, eixos do Roblox)
 	local Ixx, Iyy, Izz = P.Iarfagem, P.Iguinada, P.Irolagem
 	local wx, wy, wz = s.wx, s.wy, s.wz
-	local gx, gy, gz = cruz(wx, wy, wz, Ixx * wx, Iyy * wy, Izz * wz)
+	local hz = 0
+	if P.Giroscopio and P.Tipo ~= "jato" then hz = -P.Giroscopio * (s.FracaoMotor or 0) end
+	local gx, gy, gz = cruz(wx, wy, wz, Ixx * wx, Iyy * wy, Izz * wz + hz)
 	wx = wx + (Tx - gx) / Ixx * dt
 	wy = wy + (Ty - gy) / Iyy * dt
 	wz = wz + (Tz - gz) / Izz * dt
@@ -496,13 +574,18 @@ local function subpasso(s, dt, e)
 
 	s.Tempo = s.Tempo + dt
 	s.Alfa, s.Beta, s.Mach, s.Rho = alfa, beta, M, rho
+	-- vibracao (buffet) perto do estol e em regime transonico
+	local bAlfa = limitar((alfa - (P.AlfaEstol - 0.1)) / 0.1, 0, 1.4)
+	local bMach = limitar((M - (P.MachCritico or 0.75) - 0.04) / 0.2, 0, 0.6) * (M < 1.1 and 1 or 0.3)
+	s.Buffet = math.min(1.5, bAlfa + bMach) * limitar(V / 25, 0, 1)
 end
 
 -- Calcula as grandezas de saida (instrumentos)
 function Fisica.Calcular(s)
 	local rho, somV = Fisica.Atmosfera(s.py)
-	local V = sqrt(s.vx * s.vx + s.vy * s.vy + s.vz * s.vz)
+	local V = s.Var or sqrt(s.vx * s.vx + s.vy * s.vy + s.vz * s.vz)
 	s.V = V
+	s.VelSolo = sqrt(s.vx * s.vx + s.vy * s.vy + s.vz * s.vz)
 	s.IAS = V * sqrt(rho / 1.225)
 	s.Mach = V / somV
 	s.Altitude = s.py

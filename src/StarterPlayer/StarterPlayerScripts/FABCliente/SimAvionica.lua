@@ -761,6 +761,7 @@ function MOSTRADORES.Temp(pai, S)
 	return function(s)
 		local carga = s.FracaoMotor or s.N or 0
 		local t = s.MotorLigado and (480 + carga * 280) or 20
+		if s.EGT and s.P.Tipo == "jato" then t = s.EGT elseif s.TempMotor and s.P.Tipo ~= "jato" then t = 200 + s.TempMotor * 3 end
 		p.Rotation = -120 + math.clamp(t / 1000, 0, 1) * 240
 	end
 end

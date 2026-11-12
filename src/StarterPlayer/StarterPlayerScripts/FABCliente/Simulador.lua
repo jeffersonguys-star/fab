@@ -170,6 +170,8 @@ function SIM.Iniciar(UI)
 		local livre = defLivre ~= nil
 		local ini = def.Inicio(P)
 		local s = Fisica.Novo(P, ini)
+		-- vento e turbulencia aleatorios no voo livre (as licoes comecam com ar calmo)
+		if defLivre then Fisica.DefinirVento(s, math.random(0, 359), math.random(0, 7), 0.5 + math.random() * 0.7) end
 		s.Solo = livre and function(xm, zm) local h, t = PV.Solo(xm, zm) return h, t end or solo
 		Fisica.Calcular(s)
 		if def.MotorDesligado then
@@ -433,6 +435,7 @@ function SIM.Iniciar(UI)
 			local P2 = s.P
 			if s.AvisoEstol then amp = amp + 0.003 + 0.02 * math.clamp(((s.Alfa or 0) - (P2.AlfaEstol - math.rad(4))) / math.rad(4), 0, 1) end
 			if (s.Mach or 0) > 0.95 and (s.Mach or 0) < 1.08 then amp = amp + 0.008 end
+			amp = amp + 0.012 * (s.Buffet or 0)
 			if s.EmSolo then amp = amp + 0.0006 * math.clamp((s.V or 0) / 40, 0, 1) end
 			-- ruido filtrado (suave), nao um sorteio novo a cada quadro
 			ctx.RuidoA = (ctx.RuidoA or 0) + ((math.random() - 0.5) * 2 - (ctx.RuidoA or 0)) * math.min(1, dt * 6)
