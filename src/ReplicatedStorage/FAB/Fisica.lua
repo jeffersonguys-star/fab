@@ -231,6 +231,7 @@ local function subpasso(s, dt, e)
 		local tau = P.TempoMotor
 		if alvoN < s.N then tau = tau * 0.6 end
 		s.N = s.N + (alvoN - s.N) * math.min(1, dt / tau)
+		if math.abs(alvoN - s.N) < 0.006 then s.N = alvoN end
 		local alvoPC = 0
 		if ligado and e.Pos and P.TracaoPos and s.N > 0.93 then alvoPC = 1 end
 		if s.PosCombustor < alvoPC then s.PosCombustor = math.min(1, s.PosCombustor + dt / 1.2)
@@ -248,6 +249,7 @@ local function subpasso(s, dt, e)
 		local marcha = 0.2
 		if ligado then alvoN = marcha + (1 - marcha) * manete end
 		s.N = s.N + (alvoN - s.N) * math.min(1, dt / P.TempoMotor)
+		if math.abs(alvoN - s.N) < 0.006 then s.N = alvoN end
 		fracao = limitar((s.N - marcha) / (1 - marcha), 0, 1)
 		if ligado then
 			local pot = P.Potencia * (0.04 + 0.96 * fracao ^ 1.3) * sigma ^ (P.ExpoenteAltitude or 0.8)

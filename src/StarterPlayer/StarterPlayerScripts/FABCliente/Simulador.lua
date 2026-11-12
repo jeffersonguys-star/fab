@@ -190,6 +190,7 @@ function SIM.Iniciar(UI)
 		if not okC then warn("[FAB] Corpo do piloto: " .. tostring(corpo)) corpo = nil end
 		local hud = HUD.Criar(UI, P)
 		hud.Objetivos(def.Objetivos or {})
+		if livre then hud.Mensagem("Freio de estacionamento aplicado. Solte o interruptor FREIO EST para taxiar.", 6) end
 		local piloto = Fisiologia.NovoPiloto(4.4)
 		piloto.Traje = (P.Tipo == "jato") and 1.0 or 0
 		local v = { P = P, Def = def, S = s, Cab = cab, Corpo = corpo, Hud = hud, Cen = cen, Piloto = piloto, Id = p.Id, Nome = p.Nome, Livre = livre,
