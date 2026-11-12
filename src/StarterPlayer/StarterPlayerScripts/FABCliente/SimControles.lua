@@ -80,7 +80,7 @@ function CTRL.Criar(UI, P, opcoes)
 	aplicarManete(jato and E.Manete * 0.88 or E.Manete)
 
 	-- BOTOES ----------------------------------------------------------------------
-	local grade = UI.Novo("Frame", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -110, 1, -24), Size = UDim2.fromOffset(222, 260),
+	local grade = UI.Novo("Frame", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -110, 1, -24), Size = UDim2.fromOffset(222, 322),
 		BackgroundTransparency = 1, Parent = tela })
 	UI.Novo("UIGridLayout", { CellSize = UDim2.fromOffset(70, 44), CellPadding = UDim2.fromOffset(6, 6), HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom, SortOrder = Enum.SortOrder.LayoutOrder, Parent = grade })
@@ -119,6 +119,7 @@ function CTRL.Criar(UI, P, opcoes)
 	botao("Respirar", "RESPIRAR", 10, false, function() obj.AoAcao("Respirar") end)
 	botao("Motor", "MOTOR", 11, false, function() obj.AoAcao("Motor") end)
 	botao("Camera", "CÂMERA", 12, false, function() obj.AoAcao("Camera") end)
+	botao("FreioEst", "FREIO EST", 13, false, function() obj.AoAcao("FreioEst") end)
 
 	-- topo: menu e vista
 	local topo = UI.Novo("Frame", { Position = UDim2.new(0, 16, 0, 14), Size = UDim2.fromOffset(0, 36), AutomaticSize = Enum.AutomaticSize.X,
@@ -170,6 +171,7 @@ function CTRL.Criar(UI, P, opcoes)
 			elseif k == Enum.KeyCode.R then obj.AoAcao("Respirar")
 			elseif k == Enum.KeyCode.E then obj.AoAcao("Motor")
 			elseif k == Enum.KeyCode.B then obj.AoAcao("Camera")
+			elseif k == Enum.KeyCode.P then obj.AoAcao("FreioEst")
 			elseif k == Enum.KeyCode.C then obj.OlharYaw, obj.OlharPitch = 0, 0
 			elseif k == Enum.KeyCode.F and jato then aplicarManete(valorManete > 0.9 and 0.88 or 1)
 			elseif k == Enum.KeyCode.Space then obj.AGSM = true

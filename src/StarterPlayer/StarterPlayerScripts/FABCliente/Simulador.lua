@@ -215,7 +215,7 @@ function SIM.Iniciar(UI)
 		hud.Objetivos(def.Objetivos or {})
 		if not corpo then hud.Mensagem("Corpo do piloto indisponivel: " .. tostring(erroCorpo), 8) end
 		if cab.Diag and not string.find(cab.Diag, "OK", 1, true) then hud.Mensagem("Cabine simplificada: " .. cab.Diag, 10) end
-		if livre then hud.Mensagem("Freio de estacionamento aplicado. Solte o interruptor FREIO EST para taxiar.", 6) end
+		if livre then hud.Mensagem("Freio de estacionamento aplicado. Toque em FREIO EST (tecla P) para soltar e taxiar.", 8) end
 		local piloto = Fisiologia.NovoPiloto(4.4)
 		piloto.Traje = (P.Tipo == "jato") and 1.0 or 0
 		local v = { P = P, Def = def, S = s, Cab = cab, Corpo = corpo, Hud = hud, Cen = cen, Piloto = piloto, Id = p.Id, Nome = p.Nome, Livre = livre,
@@ -229,7 +229,7 @@ function SIM.Iniciar(UI)
 		local function acao(nome)
 			if not voo or v.Fim then return end
 			local e = ctrl.Entradas
-			if corpo and (nome == "Trem" or nome == "Flape" or nome == "AeroFreio" or nome == "Motor") then
+			if corpo and (nome == "Trem" or nome == "Flape" or nome == "AeroFreio" or nome == "Motor" or nome == "FreioEst") then
 				pcall(corpo.Alcancar, nome, cab)
 			end
 			if nome == "Trem" and P.TremRetratil then
@@ -242,6 +242,12 @@ function SIM.Iniciar(UI)
 				e.AeroFreio = not e.AeroFreio
 			elseif nome == "Respirar" then
 				Fisiologia.Respirar(piloto)
+			elseif nome == "FreioEst" then
+				if cab.Interruptores.FreioEst then
+					local novo = not cab.Estados.FreioEst
+					cab.DefinirInterruptor("FreioEst", novo)
+					hud.Mensagem(novo and "Freio de estacionamento APLICADO" or "Freio de estacionamento SOLTO", 2)
+				end
 			elseif nome == "Camera" then
 				v.Vista = ((v.Vista or 1) % 5) + 1
 				local nomes = { "Cabine", "Atrás", "Lateral", "Frente", "Cima" }
