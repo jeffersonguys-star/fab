@@ -190,8 +190,7 @@ function CAB.Criar(P, pastaPai)
 	-- INSTRUMENTOS ANALOGICOS -------------------------------------------------------------------
 	for _, m in ipairs(lay.Mostradores) do
 		local d = m.Diam
-		local suporte = parte(modelo, "Instrumento_" .. m.Nome, Vector3.new(d, d, 0.003), cfItem(m), Color3.new(0, 0, 0), Enum.Material.SmoothPlastic,
-			{ Transparency = 1 })
+		local suporte = parte(modelo, "Instrumento_" .. m.Nome, Vector3.new(d, d, 0.003), cfItem(m), Color3.fromRGB(14, 14, 15), Enum.Material.SmoothPlastic)
 		local g = superficie(suporte, Enum.NormalId.Back, Vector2.new(400, 400), "FAB_" .. m.Nome)
 		g.Brightness = 1.1
 		table.insert(obj.Guis, g)

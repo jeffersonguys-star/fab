@@ -36,12 +36,20 @@ function CORPO.Criar(P, pasta)
 	local obj = {}
 	local jogador = Players.LocalPlayer
 	local char = jogador.Character
-	if not char or not char:FindFirstChild("Torso") then return nil end
 	local lay = LAYOUT[P.Id]
-	if not lay or not lay.Manche or not lay.Manete then return nil end
-
-	local ok, clone = pcall(function() return char:Clone() end)
-	if not ok or not clone then return nil end
+	if not lay or not lay.Manche or not lay.Manete then obj.Erro = "layout sem manche/manete" return nil, obj.Erro end
+	local ok, clone
+	if char and char:FindFirstChild("Torso") then
+		ok, clone = pcall(function() return char:Clone() end)
+	else
+		-- o jogo nao esta em R6: monta um corpo R6 com a aparencia do jogador
+		ok, clone = pcall(function()
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local desc = hum and hum:GetAppliedDescription() or Players:GetHumanoidDescriptionFromUserId(jogador.UserId)
+			return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R6)
+		end)
+	end
+	if not ok or not clone then return nil, "nao foi possivel montar o corpo R6: " .. tostring(clone) end
 	clone.Name = "CorpoPiloto"
 	for _, d in ipairs(clone:GetDescendants()) do
 		if d:IsA("Script") or d:IsA("LocalScript") then d:Destroy() end
@@ -55,7 +63,7 @@ function CORPO.Criar(P, pasta)
 	local torso, cabeca = peca("Torso"), peca("Head")
 	local bE, bD, pE, pD = peca("Left Arm"), peca("Right Arm"), peca("Left Leg"), peca("Right Leg")
 	local raizHum = peca("HumanoidRootPart")
-	if not (torso and cabeca and bE and bD and pE and pD) then clone:Destroy() return nil end
+	if not (torso and cabeca and bE and bD and pE and pD) then clone:Destroy() return nil, "corpo sem as pecas R6" end
 	for _, d in ipairs(clone:GetDescendants()) do
 		if d:IsA("BasePart") then
 			d.Anchored = true

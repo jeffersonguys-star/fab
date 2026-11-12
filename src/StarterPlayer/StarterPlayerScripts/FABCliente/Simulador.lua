@@ -208,10 +208,12 @@ function SIM.Iniciar(UI)
 				cab.DefinirInterruptor(id, ligado)
 			end
 		end
-		local okC, corpo = pcall(CORPO.Criar, P, cen.Pasta)
-		if not okC then warn("[FAB] Corpo do piloto: " .. tostring(corpo)) corpo = nil end
+		local okC, corpo, erroCorpo = pcall(CORPO.Criar, P, cen.Pasta)
+		if not okC then erroCorpo = corpo corpo = nil end
+		if not corpo then warn("[FAB] Corpo do piloto: " .. tostring(erroCorpo)) end
 		local hud = HUD.Criar(UI, P)
 		hud.Objetivos(def.Objetivos or {})
+		if not corpo then hud.Mensagem("Corpo do piloto indisponivel: " .. tostring(erroCorpo), 8) end
 		if cab.Diag and not string.find(cab.Diag, "OK", 1, true) then hud.Mensagem("Cabine simplificada: " .. cab.Diag, 10) end
 		if livre then hud.Mensagem("Freio de estacionamento aplicado. Solte o interruptor FREIO EST para taxiar.", 6) end
 		local piloto = Fisiologia.NovoPiloto(4.4)

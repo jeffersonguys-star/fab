@@ -299,6 +299,14 @@ def manete(x, y, z):
     return g.malha()
 
 
+def alavanca_curta(x, y, z, h=0.07, r=0.026):
+    """Alavanca pequena de quadrante (helice, mistura): haste fina e botao redondo."""
+    g = Grupo()
+    g.add(caixa(0.01, h, 0.012).mover(x, y + h / 2, z))
+    g.add(superelipsoide(r, r * 0.8, r, 2.0, 10, 8).mover(x, y + h + r * 0.35, z))
+    return g.malha()
+
+
 # CABINE COMPLETA ----------------------------------------------------------------------
 CONF = {
     "F39": {"paineis": "wad", "hud": "largo", "manche_x": 0.0},
@@ -539,9 +547,9 @@ def construir(spec):
     manche2 = None
     if pid == "T25":
         # quadrante com tres alavancas (potencia, helice, mistura), botao amarelo e placas vermelhas, como no avião real
-        for dx in (-0.04, 0.04):
-            G["preto"].add(manete(xt + dx, yt + 0.02, zt + 0.01))
-        G["amarelo"].add(superelipsoide(0.03, 0.03, 0.04, 2.4, 10, 8).mover(xt + 0.04, yt + 0.175, zt))
+        G["preto"].add(alavanca_curta(xt - 0.045, yt + 0.02, zt + 0.02, 0.07, 0.024))
+        G["vermelho"].add(alavanca_curta(xt + 0.045, yt + 0.02, zt + 0.02, 0.07, 0.024))
+        G["amarelo"].add(superelipsoide(0.018, 0.012, 0.018, 2.0, 8, 6).mover(xt + 0.075, yt + 0.03, zt - 0.08))
         G["vermelho"].add(caixa(0.1, 0.002, 0.07).girar("x", -22).mover(xt, topo_console + 0.056, oz - 0.46))
         for ux in (-0.5, 0.5):
             G["vermelho"].add(qp.malha(caixa(0.07, 0.026, 0.004).mover(ux, 0.2, 0.002)))
