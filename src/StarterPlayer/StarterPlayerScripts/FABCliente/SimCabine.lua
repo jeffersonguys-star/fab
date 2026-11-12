@@ -115,8 +115,12 @@ function CAB.Criar(P, pastaPai)
 		local ped = ReplicatedStorage:FindFirstChild("FABPedirCabine")
 		if ped then
 			ped:FireServer(P.Id)
-			malha = pastaMalhas:WaitForChild("Sim_" .. P.Id, 20)
+			malha = pastaMalhas:WaitForChild("Sim_" .. P.Id, 30)
 		end
+	end
+	if malha then
+		-- espera as malhas terminarem de baixar para a cabine nao aparecer pela metade
+		pcall(function() game:GetService("ContentProvider"):PreloadAsync(malha:GetDescendants()) end)
 	end
 	obj.Animadas = {}
 	obj.Trem = {}

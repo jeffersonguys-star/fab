@@ -178,7 +178,29 @@ function SIM.Iniciar(UI)
 		end
 		local cen = CEN.Criar()
 		if livre then cen.Pista = PV.Criar(cen.Pasta) end
-		local cab = CAB.Criar(P, cen.Pasta)
+		local telaCar = Instance.new("ScreenGui")
+		telaCar.IgnoreGuiInset = true
+		telaCar.DisplayOrder = 900
+		telaCar.ResetOnSpawn = false
+		do
+			local f = Instance.new("Frame")
+			f.Size = UDim2.fromScale(1, 1)
+			f.BackgroundColor3 = Color3.fromRGB(8, 8, 9)
+			f.BorderSizePixel = 0
+			f.Parent = telaCar
+			local t = Instance.new("TextLabel")
+			t.Size = UDim2.fromScale(1, 1)
+			t.BackgroundTransparency = 1
+			t.Font = Enum.Font.GothamBold
+			t.TextSize = 18
+			t.TextColor3 = Color3.new(1, 1, 1)
+			t.Text = "CARREGANDO A CABINE..."
+			t.Parent = f
+			telaCar.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+		end
+		local okCab, cab = pcall(CAB.Criar, P, cen.Pasta)
+		telaCar:Destroy()
+		if not okCab then error(cab) end
 		for id in pairs(cab.Interruptores) do
 			if id ~= "Trem" and id ~= "Flape" then
 				local ligado = not def.MotorDesligado and id ~= "Partida"

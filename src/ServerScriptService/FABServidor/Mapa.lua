@@ -61,12 +61,19 @@ end
 -- Arvore (tronco e copa em camadas)
 function Mapa.Arvore(pai, pos, escala, simples)
 	escala = escala or 1
-	local tronco = C.Cilindro(pai, "Tronco", 1.2 * escala, 9 * escala, CFrame.new(pos + Vector3.new(0, 4.5 * escala, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-		Color3.fromRGB(92, 66, 44), Enum.Material.Wood)
-	local verde = Color3.fromRGB(48 + math.random(0, 25), 88 + math.random(0, 30), 40 + math.random(0, 15))
-	C.Esfera(pai, "Copa", 9 * escala, CFrame.new(pos + Vector3.new(0, 10 * escala, 0)), verde, Enum.Material.Grass, { CanCollide = false })
-	if not simples then
-		C.Esfera(pai, "Copa", 7 * escala, CFrame.new(pos + Vector3.new(1.8 * escala, 12.5 * escala, 1 * escala)), verde, Enum.Material.Grass, { CanCollide = false })
+	local rng = Random.new(math.floor(pos.X * 7 + pos.Z * 13) % 100000)
+	local inclina = math.rad(rng:NextNumber(-5, 5))
+	local tronco = C.Cilindro(pai, "Tronco", 1.4 * escala, 10 * escala,
+		CFrame.new(pos + Vector3.new(0, 5 * escala, 0)) * CFrame.Angles(inclina, 0, math.rad(90)),
+		Color3.fromRGB(86 + rng:NextInteger(0, 14), 64, 42), Enum.Material.Wood)
+	local function verde()
+		return Color3.fromRGB(52 + rng:NextInteger(0, 28), 86 + rng:NextInteger(0, 30), 42 + rng:NextInteger(0, 14))
+	end
+	local n = simples and 2 or 4
+	for i = 1, n do
+		local d = (i == 1) and 10 or rng:NextNumber(5.5, 8)
+		local off = (i == 1) and Vector3.zero or Vector3.new(rng:NextNumber(-3.5, 3.5) * escala, rng:NextNumber(-1, 3) * escala, rng:NextNumber(-3.5, 3.5) * escala)
+		C.Esfera(pai, "Copa", d * escala, CFrame.new(pos + Vector3.new(0, 11.5 * escala, 0) + off), verde(), Enum.Material.Grass, { CanCollide = false })
 	end
 	return tronco
 end
@@ -330,6 +337,34 @@ function Mapa.Construir(N)
 	Mapa.Raiz = raiz
 	iluminacao()
 	N.Placas = N.Placas or {}
+	-- Gramado: chao em partes, um pouco abaixo do nivel das vias, para nada brigar com o terreno
+	do
+		local g = pasta("Gramado", raiz)
+		local R = MD.Ilha.RaioZ
+		local passoZ = 400
+		for z0 = -R, R - passoZ, passoZ do
+			local e0, d0 = MD.Borda(z0)
+			local e1, d1 = MD.Borda(z0 + passoZ)
+			local esq, dir = math.max(e0, e1) + 8, math.min(d0, d1) - 8
+			if dir - esq > 20 then
+				local x = esq
+				while x < dir do
+					local x2 = math.min(x + 2000, dir)
+					local p = Instance.new("Part")
+					p.Name = "Gramado"
+					p.Anchored = true
+					p.Size = Vector3.new(x2 - x, 6, passoZ)
+					p.Position = Vector3.new((x + x2) / 2, MD.Plato - 0.3 - 3, z0 + passoZ / 2)
+					p.Material = Enum.Material.Grass
+					p.Color = Color3.fromRGB(92, 120, 60)
+					p.CastShadow = false
+					p.TopSurface = Enum.SurfaceType.Smooth
+					p.Parent = g
+					x = x2
+				end
+			end
+		end
+	end
 	require(script.Parent:WaitForChild("MapaEnsino")).Construir(N, Mapa, raiz)
 	require(script.Parent:WaitForChild("MapaAerodromo")).Construir(N, Mapa, raiz)
 	for _, nome in ipairs({ "MapaVila", "MapaVeiculos", "MapaAvioes", "MapaVegetacao" }) do
