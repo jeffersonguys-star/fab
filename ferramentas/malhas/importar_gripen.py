@@ -84,6 +84,7 @@ def kmeans(X, k, it=12):
 def construir_cabine(pecas, esc, x_max, alvo=110000):
     sel = [p for p in pecas if p["material"] in MATS_CABINE or p["material"].startswith("sw_gauge")]
     sel = [p for p in sel if p["nome"] != "Object_70"]
+    remover_manche = True
     cache = {}
     Vs, Fs, Cs, n = [], [], [], 0
     for p in sel:
@@ -105,6 +106,11 @@ def construir_cabine(pecas, esc, x_max, alvo=110000):
         k += 1
     novo, F, cn = np.vstack(Vo), np.vstack(Fo), np.vstack(Co)
     print("cabine reduzida:", len(F))
+    # tira o manche original (o manche animado do simulador toma o lugar dele)
+    cm = novo[F].mean(axis=1)
+    caixa_m = (np.abs(cm[:, 0]) < 0.07) & (cm[:, 1] > 0.16) & (cm[:, 1] < 0.56) & (cm[:, 2] > -4.32) & (cm[:, 2] < -3.95)
+    F = F[~caixa_m]
+    print("faces do manche original removidas:", int(caixa_m.sum()))
     return novo, F, cn
 
 
@@ -151,7 +157,7 @@ def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True, sem_regia
     c = V[I].mean(axis=1)
     if sem_regiao_cabine:
         # na cabine o piloto nao ve a casca externa em volta dele: tira essa regiao (evita fragmentos na frente da camera)
-        dentro = (np.abs(c[:, 0]) < 1.05) & (c[:, 2] > -5.6) & (c[:, 2] < -2.0) & (c[:, 1] > -0.25)
+        dentro = (np.abs(c[:, 0]) < 0.48) & (c[:, 2] > -4.95) & (c[:, 2] < -2.7) & (c[:, 1] > -0.15)
         I = I[~dentro]
         c = c[~dentro]
     print("exterior reduzido:", len(I), "celula", round(celula, 3))
@@ -170,7 +176,75 @@ def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True, sem_regia
             if p["nome"] == "Object_15":
                 Vg = para_jogo(p["V"], esc, x_max)
                 cena.adicionar("Canopi", Malha(Vg, p["F"], suave=True), (150, 190, 205), "Glass", transparencia=0.55)
+    adicionar_armamento(cena, pecas, esc, x_max)
+    adicionar_cocares(cena, V, I)
     return trem_gripen(cena) if trem else {}
+
+
+MATS_ARMAS = {"lau_7": (150, 154, 158), "bol_451_container": (214, 216, 212), "lavett_71": (120, 124, 128),
+              "lavett_75_launcher": (120, 124, 128), "saab_jas39a_pylon1": (112, 116, 120)}
+
+
+def adicionar_armamento(cena, pecas, esc, x_max):
+    """Cabides e misseis de curto alcance do modelo original, bem simplificados."""
+    por_cor = {}
+    for p in pecas:
+        cor = MATS_ARMAS.get(p["material"])
+        if cor is None:
+            continue
+        Vp = para_jogo(p["V"], esc, x_max)
+        Vd, Fd = decimar.decimar(Vp, p["F"], max(80, len(p["F"]) // 5))
+        por_cor.setdefault(cor, []).append((Vd, Fd))
+    for i, (cor, lst) in enumerate(por_cor.items()):
+        Vs_, Fs_, n_ = [], [], 0
+        for Vd, Fd in lst:
+            Vs_.append(Vd); Fs_.append(Fd + n_); n_ += len(Vd)
+        adicionar_em_blocos(cena, "Armas%d_" % i, np.vstack(Vs_), np.vstack(Fs_), cor, "SmoothPlastic", metal=0.1, rug=0.5)
+
+
+def superficie_y(V, I, x, z):
+    """Alturas minima e maxima das faces que cobrem o ponto (x, z) visto de cima."""
+    T = V[I][:, :, [0, 2]]
+    a, b, c = T[:, 0], T[:, 1], T[:, 2]
+    p = np.array([x, z])
+    d = (b[:, 1] - c[:, 1]) * (a[:, 0] - c[:, 0]) + (c[:, 0] - b[:, 0]) * (a[:, 1] - c[:, 1])
+    ok = np.abs(d) > 1e-12
+    l1 = np.where(ok, ((b[:, 1] - c[:, 1]) * (p[0] - c[:, 0]) + (c[:, 0] - b[:, 0]) * (p[1] - c[:, 1])) / np.where(ok, d, 1), -1)
+    l2 = np.where(ok, ((c[:, 1] - a[:, 1]) * (p[0] - c[:, 0]) + (a[:, 0] - c[:, 0]) * (p[1] - c[:, 1])) / np.where(ok, d, 1), -1)
+    l3 = 1 - l1 - l2
+    dentro = (l1 >= 0) & (l2 >= 0) & (l3 >= 0)
+    if not dentro.any():
+        return None
+    Y = V[I][:, :, 1]
+    yy = l1 * Y[:, 0] + l2 * Y[:, 1] + l3 * Y[:, 2]
+    return yy[dentro].min(), yy[dentro].max()
+
+
+def adicionar_cocares(cena, V, I):
+    """Cocares da FAB nas asas (cima e baixo): o disco e assentado na altura da superficie."""
+    import aeronaves as av
+    from malha import Malha
+    acum = {}
+    for lado in (-1, 1):
+        cx, cz, d = lado * 3.45, 2.0, 0.7
+        ys = superficie_y(V, I, cx, cz)
+        if ys is None:
+            continue
+        for topo in (True, False):
+            y0 = ys[1] + 0.012 if topo else ys[0] - 0.012
+            for k, (m, cor) in enumerate(av.cocar(d)):
+                mm = m.copia()
+                mm.v = mm.v * np.array([1.0, 0.3, 1.0])
+                mm = mm.mover(cx, y0, cz)
+                if not topo:
+                    mm = mm.copia()
+                    mm.v = mm.v.copy()
+                    mm.v[:, 1] = 2 * y0 - mm.v[:, 1] + 0.0
+                    mm.f = mm.f[:, ::-1]
+                acum[cor] = acum[cor] + mm if cor in acum else mm
+    nomes = {(0, 151, 57): "CocarVerde", (254, 221, 0): "CocarAmarelo", (0, 39, 118): "CocarAzul", (250, 250, 250): "CocarEstrela"}
+    for cor, m in acum.items():
+        cena.adicionar(nomes.get(cor, "Cocar"), m, cor, "SmoothPlastic", rug=0.6)
 
 
 def trem_gripen(cena):
@@ -231,7 +305,7 @@ def cabine_sim():
     import cabines
     pecas, ext, esc, x_max = carregar_fonte()
     cena = Cena()
-    art = adicionar_exterior(cena, pecas, ext, esc, x_max, int(os.environ.get("ALVO_SIM", 38000)), vidro=False)
+    art = adicionar_exterior(cena, pecas, ext, esc, x_max, int(os.environ.get("ALVO_SIM", 38000)), vidro=False, sem_regiao_cabine=True)
     V, F, C = construir_cabine(pecas, esc, x_max, int(os.environ.get("ALVO_CABINE", 70000)))
     cf = C[F].mean(axis=1)
     cf = np.clip(cf * 1.2 + 16, 0, 255)  # a textura original e bem escura; clareia um pouco

@@ -103,7 +103,7 @@ function CORPO.Criar(P, pasta)
 	local pManche = Vector3.new(lay.Manche.Pivo[1], lay.Manche.Pivo[2], lay.Manche.Pivo[3]) * E
 	local pManete = Vector3.new(lay.Manete.Pivo[1], lay.Manete.Pivo[2], lay.Manete.Pivo[3]) * E
 	-- o corpo gira em torno do quadril; "inclinacao" (0 a 1) inclina o tronco para alcancar longe
-	local quadril = Vector3.new(ox, oy - 2.5 * k, oz + 0.95 * k) -- corpo recuado: a cabeca fica no olho, o tronco atras dela
+	local quadril = Vector3.new(ox, oy - 1.95 * k, oz + 0.95 * k) -- corpo recuado: a cabeca fica no olho, o tronco atras dela
 	local inclinacao, inclinaLado = 0, 0
 	local function cfTroncoCom(inc, lado)
 		local rot = CFrame.Angles(math.rad(-9 - 28 * inc), 0, math.rad(lado * 20 * inc))
@@ -120,7 +120,7 @@ function CORPO.Criar(P, pasta)
 		local arf = math.clamp(e.Arfagem or 0, -1, 1)
 		local rol = math.clamp(e.Rolagem or 0, -1, 1)
 		local rot = CFrame.Angles(arf * math.rad(14), 0, -rol * math.rad(14))
-		return pManche + rot * Vector3.new(0, 0.40 * E, 0)
+		return pManche + rot * Vector3.new(0, 0.33 * E, 0)
 	end
 	local function topoManete(e)
 		local m = math.clamp(e.Manete or 0, 0, 1)
@@ -164,7 +164,7 @@ function CORPO.Criar(P, pasta)
 		local maxAlc = tamBraco.Y * k * 2.3
 		if d > maxAlc then d = maxAlc end
 		local comp = math.max(tamBraco.Y * k, d + 0.5 * k)
-		parte.Size = Vector3.new(tamBraco.X * k, comp, tamBraco.Z * k)
+		parte.Size = Vector3.new(tamBraco.X * k * 0.6, comp, tamBraco.Z * k * 0.6)
 		local centro = ombro + dir * ((d - 0.5 * k) / 2)
 		parte.CFrame = cfRaiz * orientar(centro, dir)
 	end
