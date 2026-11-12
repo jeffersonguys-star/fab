@@ -1,33 +1,46 @@
 --[[
 	FAB - Cabine 3D do simulador (cliente)
 
-	Monta a cabine da aeronave em escala real em volta do olho do piloto: fuselagem,
-	nariz com helice (ou radome), asas, canopi de vidro, painel com instrumentos
-	analogicos (T-25 e T-27) ou telas (A-29, F-5EM e F-39E), manche e manete que se
-	movem, e interruptores interativos (toque na tela ou clique para acionar).
+	A geometria vem da malha "Sim_<aeronave>" (ReplicatedStorage.FABMalhas): exterior
+	completo (fuselagem, asas, nariz, helice, trem e canopi) e uma cabine detalhada com
+	assento ejetavel, cintos, consoles cheios de placas e comandos, painel com molduras
+	de MFD ou aros de instrumentos, para-sol, HUD, manche, manete, pedais e espelhos.
 
-	Todas as pecas sao soldadas a uma raiz ancorada; o simulador so move a raiz.
+	Por cima da malha este modulo monta as partes vivas, nas posicoes de CabineLayout:
+	telas com aviônica real (SimAvionica), instrumentos analogicos, interruptores que
+	funcionam, alavanca do trem com as 3 luzes, alavanca do flape, luzes de alerta,
+	vidro combinador do HUD e a prancheta de joelho (escolha de missao).
+
+	Se a malha ainda nao estiver disponivel, monta uma cabine simplificada por partes.
+	Tudo e soldado a uma raiz ancorada; o simulador so move a raiz.
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local MD = require(ReplicatedStorage:WaitForChild("FAB"):WaitForChild("MapaDados"))
+local FAB = ReplicatedStorage:WaitForChild("FAB")
+local MD = require(FAB:WaitForChild("MapaDados"))
+local LAYOUT = require(FAB:WaitForChild("CabineLayout"))
+local AV = require(script.Parent:WaitForChild("SimAvionica"))
 
 local CAB = {}
 
 local E = MD.StudPorMetro
-local PRETO = Color3.fromRGB(18, 18, 20)
-local GRAFITE = Color3.fromRGB(42, 44, 48)
-local CINZA_PAINEL = Color3.fromRGB(58, 60, 64)
+local GRAFITE = Color3.fromRGB(44, 46, 50)
+local PRETO = Color3.fromRGB(14, 14, 15)
 
-local function v(x, y, z) return Vector3.new(x * E, y * E, z * E) end
+local function cfItem(it, dx, dy, dz)
+	local p, r = it.P, it.R or { 0, 0, 0 }
+	return CFrame.new(p[1] * E, p[2] * E, p[3] * E) * CFrame.Angles(math.rad(r[1]), math.rad(r[2]), math.rad(r[3]))
+		* CFrame.new((dx or 0) * E, (dy or 0) * E, (dz or 0) * E)
+end
 
-local function novaParte(pai, nome, tamanhoM, cfLocal, raizCF, cor, material, extra)
+local function parte(pai, nome, tamM, cf, cor, mat, extra)
 	local p = Instance.new("Part")
 	p.Name = nome
-	p.Size = tamanhoM * E
-	p.CFrame = raizCF * cfLocal
+	p.Size = tamM * E
+	p.CFrame = cf
 	p.Color = cor or GRAFITE
-	p.Material = material or Enum.Material.SmoothPlastic
+	p.Material = mat or Enum.Material.SmoothPlastic
 	p.Anchored = false
 	p.CanCollide = false
 	p.CanQuery = false
@@ -36,194 +49,51 @@ local function novaParte(pai, nome, tamanhoM, cfLocal, raizCF, cor, material, ex
 	p.Massless = true
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
-	if extra then for k, val in pairs(extra) do p[k] = val end end
+	if extra then for k, v in pairs(extra) do p[k] = v end end
 	p.Parent = pai
 	return p
 end
 
--- CFrame local em metros
-local function L(x, y, z, rx, ry, rz)
-	return CFrame.new(x * E, y * E, z * E) * CFrame.Angles(rx or 0, ry or 0, rz or 0)
+local function superficie(adorno, face, canvas, nome)
+	local g = Instance.new("SurfaceGui")
+	g.Name = nome or "Tela"
+	g.Face = face
+	g.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+	g.CanvasSize = canvas
+	g.LightInfluence = 0
+	g.Brightness = 1.6
+	g.ZOffset = 1
+	g.ResetOnSpawn = false
+	g.Adornee = adorno
+	g.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	return g
 end
 
--- Instrumento analogico (mostrador redondo com ponteiro)
-local function mostrador(pai, x, y, tam, titulo, marcas, numeros)
-	local f = Instance.new("Frame")
-	f.AnchorPoint = Vector2.new(0.5, 0.5)
-	f.Position = UDim2.fromOffset(x, y)
-	f.Size = UDim2.fromOffset(tam, tam)
-	f.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-	f.BorderSizePixel = 0
-	f.Parent = pai
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(1, 0)
-	c.Parent = f
-	local s = Instance.new("UIStroke")
-	s.Color = Color3.fromRGB(90, 90, 90)
-	s.Thickness = 3
-	s.Parent = f
-	for i = 0, (marcas or 0) - 1 do
-		local ang = (numeros and numeros.Inicio or 0) + i * ((numeros and numeros.Passo) or (360 / marcas))
-		local braco = Instance.new("Frame")
-		braco.AnchorPoint = Vector2.new(0.5, 1)
-		braco.Position = UDim2.fromScale(0.5, 0.5)
-		braco.Size = UDim2.new(0, 2, 0.47, 0)
-		braco.BackgroundTransparency = 1
-		braco.Rotation = ang
-		braco.Parent = f
-		local traco = Instance.new("Frame")
-		traco.Size = UDim2.new(1, 0, 0, (i % 2 == 0) and 9 or 5)
-		traco.BackgroundColor3 = Color3.new(1, 1, 1)
-		traco.BorderSizePixel = 0
-		traco.Parent = braco
+-- Cabine simplificada por partes (enquanto a malha nao carrega)
+local function construirSimples(modelo, P, lay)
+	local ox, oy, oz = lay.Olho[1], lay.Olho[2], lay.Olho[3]
+	local function L(x, y, z) return CFrame.new(x * E, y * E, z * E) end
+	local larg = (P.Assentos == "lado") and 1.2 or 0.82
+	local piso = oy - 1.42
+	local cx = (P.Assentos == "lado") and 0 or ox
+	parte(modelo, "Piso", Vector3.new(larg, 0.03, 1.9), L(cx, piso, oz), GRAFITE, Enum.Material.DiamondPlate)
+	for _, s in ipairs({ -1, 1 }) do
+		parte(modelo, "Parede", Vector3.new(0.03, 1.0, 1.9), L(cx + s * larg / 2, piso + 0.5, oz), GRAFITE, Enum.Material.Metal)
+		parte(modelo, "Console", Vector3.new(0.17, 0.78, 0.95), L(cx + s * (larg / 2 - 0.1), piso + 0.39, oz), Color3.fromRGB(48, 51, 55), Enum.Material.Metal)
 	end
-	if numeros and numeros.Textos then
-		for i, t in ipairs(numeros.Textos) do
-			local ang = math.rad(numeros.Inicio + (i - 1) * numeros.PassoTexto)
-			local r = 0.32
-			local l = Instance.new("TextLabel")
-			l.AnchorPoint = Vector2.new(0.5, 0.5)
-			l.Position = UDim2.fromScale(0.5 + math.sin(ang) * r, 0.5 - math.cos(ang) * r)
-			l.Size = UDim2.fromOffset(tam * 0.2, tam * 0.12)
-			l.BackgroundTransparency = 1
-			l.Text = t
-			l.TextColor3 = Color3.new(1, 1, 1)
-			l.Font = Enum.Font.GothamBold
-			l.TextScaled = true
-			l.Parent = f
-		end
-	end
-	local rot = Instance.new("TextLabel")
-	rot.AnchorPoint = Vector2.new(0.5, 0)
-	rot.Position = UDim2.fromScale(0.5, 0.62)
-	rot.Size = UDim2.fromScale(0.6, 0.12)
-	rot.BackgroundTransparency = 1
-	rot.Text = titulo
-	rot.TextColor3 = Color3.fromRGB(200, 200, 200)
-	rot.Font = Enum.Font.Gotham
-	rot.TextScaled = true
-	rot.Parent = f
-	local function ponteiro(comprimento, largura, cor)
-		local p = Instance.new("Frame")
-		p.AnchorPoint = Vector2.new(0.5, 1)
-		p.Position = UDim2.fromScale(0.5, 0.5)
-		p.Size = UDim2.new(0, largura or 4, comprimento or 0.42, 0)
-		p.BackgroundColor3 = cor or Color3.new(1, 1, 1)
-		p.BorderSizePixel = 0
-		p.ZIndex = 3
-		p.Parent = f
-		return p
-	end
-	local cubo = Instance.new("Frame")
-	cubo.AnchorPoint = Vector2.new(0.5, 0.5)
-	cubo.Position = UDim2.fromScale(0.5, 0.5)
-	cubo.Size = UDim2.fromOffset(10, 10)
-	cubo.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	cubo.ZIndex = 4
-	cubo.Parent = f
-	local cc = Instance.new("UICorner")
-	cc.CornerRadius = UDim.new(1, 0)
-	cc.Parent = cubo
-	return f, ponteiro
-end
-
--- Horizonte artificial (recortado por CanvasGroup)
-local function horizonte(pai, x, y, tam, redondo)
-	local ok, g = pcall(function() return Instance.new("CanvasGroup") end)
-	if not ok then g = Instance.new("Frame") g.ClipsDescendants = true end
-	g.AnchorPoint = Vector2.new(0.5, 0.5)
-	g.Position = UDim2.fromOffset(x, y)
-	g.Size = UDim2.fromOffset(tam, tam)
-	g.BackgroundColor3 = Color3.fromRGB(110, 70, 35)
-	g.BorderSizePixel = 0
-	g.Parent = pai
-	if redondo then
-		local c = Instance.new("UICorner")
-		c.CornerRadius = UDim.new(1, 0)
-		c.Parent = g
-	end
-	local disco = Instance.new("Frame")
-	disco.AnchorPoint = Vector2.new(0.5, 0.5)
-	disco.Position = UDim2.fromScale(0.5, 0.5)
-	disco.Size = UDim2.fromScale(3, 3)
-	disco.BackgroundTransparency = 1
-	disco.Parent = g
-	local ceu = Instance.new("Frame")
-	ceu.Size = UDim2.fromScale(1, 0.5)
-	ceu.BackgroundColor3 = Color3.fromRGB(40, 120, 210)
-	ceu.BorderSizePixel = 0
-	ceu.Parent = disco
-	local terra = Instance.new("Frame")
-	terra.Position = UDim2.fromScale(0, 0.5)
-	terra.Size = UDim2.fromScale(1, 0.5)
-	terra.BackgroundColor3 = Color3.fromRGB(120, 75, 35)
-	terra.BorderSizePixel = 0
-	terra.Parent = disco
-	local linha = Instance.new("Frame")
-	linha.AnchorPoint = Vector2.new(0.5, 0.5)
-	linha.Position = UDim2.fromScale(0.5, 0.5)
-	linha.Size = UDim2.new(1, 0, 0, 2)
-	linha.BackgroundColor3 = Color3.new(1, 1, 1)
-	linha.BorderSizePixel = 0
-	linha.Parent = disco
-	-- escada de arfagem (a cada 10 graus); 1 grau = tam/60 pixels
-	local pxGrau = tam / 60
-	for k = -6, 6 do
-		if k ~= 0 then
-			local m = Instance.new("Frame")
-			m.AnchorPoint = Vector2.new(0.5, 0.5)
-			m.Position = UDim2.new(0.5, 0, 0.5, -k * 10 * pxGrau)
-			m.Size = UDim2.fromOffset(tam * (k % 2 == 0 and 0.3 or 0.16), 2)
-			m.BackgroundColor3 = Color3.new(1, 1, 1)
-			m.BorderSizePixel = 0
-			m.Parent = disco
-		end
-	end
-	-- simbolo fixo da aeronave
-	for _, s in ipairs({ { -0.22, 0.14 }, { 0.22, 0.14 } }) do
-		local a = Instance.new("Frame")
-		a.AnchorPoint = Vector2.new(0.5, 0.5)
-		a.Position = UDim2.fromScale(0.5 + s[1], 0.5)
-		a.Size = UDim2.new(s[2], 0, 0, 4)
-		a.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-		a.BorderSizePixel = 0
-		a.ZIndex = 5
-		a.Parent = g
-	end
-	local ponto = Instance.new("Frame")
-	ponto.AnchorPoint = Vector2.new(0.5, 0.5)
-	ponto.Position = UDim2.fromScale(0.5, 0.5)
-	ponto.Size = UDim2.fromOffset(6, 6)
-	ponto.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-	ponto.ZIndex = 5
-	ponto.Parent = g
-	return function(arfagem, inclinacao)
-		disco.Rotation = -inclinacao
-		local rad = math.rad(inclinacao)
-		local dy = arfagem * pxGrau
-		disco.Position = UDim2.new(0.5, -math.sin(rad) * dy, 0.5, math.cos(rad) * dy)
-	end
-end
-
-local function rotulo(pai, texto, x, y, w, h, tam, cor, fonte, alinh)
-	local t = Instance.new("TextLabel")
-	t.Position = UDim2.fromOffset(x, y)
-	t.Size = UDim2.fromOffset(w, h)
-	t.BackgroundTransparency = 1
-	t.Text = texto
-	t.TextSize = tam
-	t.TextColor3 = cor or Color3.new(1, 1, 1)
-	t.Font = fonte or Enum.Font.GothamBold
-	t.TextXAlignment = alinh or Enum.TextXAlignment.Center
-	t.Parent = pai
-	return t
+	parte(modelo, "Painel", Vector3.new(larg * 0.9, 0.46, 0.04), L(cx, oy - 0.47, oz - 0.71) * CFrame.Angles(math.rad(-10), 0, 0), GRAFITE)
+	parte(modelo, "ParaSol", Vector3.new(larg * 0.95, 0.06, 0.4), L(cx, oy - 0.21, oz - 0.82), PRETO, Enum.Material.Fabric)
+	parte(modelo, "Assento", Vector3.new(0.48, 0.1, 0.46), L(ox, oy - 0.86, oz + 0.05), Color3.fromRGB(62, 70, 54), Enum.Material.Fabric)
+	parte(modelo, "Encosto", Vector3.new(0.46, 0.8, 0.14), L(ox, oy - 0.42, oz + 0.38) * CFrame.Angles(math.rad(-14), 0, 0), Color3.fromRGB(62, 70, 54), Enum.Material.Fabric)
+	parte(modelo, "Manche", Vector3.new(0.035, 0.42, 0.035), L(ox, piso + 0.39, oz - 0.36), PRETO)
+	parte(modelo, "Manete", Vector3.new(0.05, 0.13, 0.08), L(lay.Manete.Pivo[1], lay.Manete.Pivo[2] + 0.07, lay.Manete.Pivo[3]), PRETO)
 end
 
 function CAB.Criar(P, pastaPai)
-	local obj = { Interruptores = {}, Estados = {}, P = P }
+	local lay = LAYOUT[P.Id]
+	local obj = { Interruptores = {}, Estados = {}, P = P, Guis = {}, Telas = {}, Instrumentos = {} }
 	local modelo = Instance.new("Model")
 	modelo.Name = "CabineSimulador"
-	local raizCF = CFrame.new(0, 50000, 0)
 	local raiz = Instance.new("Part")
 	raiz.Name = "Raiz"
 	raiz.Anchored = true
@@ -232,367 +102,205 @@ function CAB.Criar(P, pastaPai)
 	raiz.CanTouch = false
 	raiz.Transparency = 1
 	raiz.Size = Vector3.new(0.2, 0.2, 0.2)
-	raiz.CFrame = raizCF
+	raiz.CFrame = CFrame.new()
 	raiz.Parent = modelo
 	obj.Raiz = raiz
 	obj.Modelo = modelo
-	local ox, oy, oz = P.Olho[1], P.Olho[2], P.Olho[3]
-	local jato = P.Tipo == "jato"
-	local vidro = P.Cabine == "vidro"
-	local corFuselagem = jato and Color3.fromRGB(150, 156, 160) or Color3.fromRGB(235, 235, 232)
-	if P.Id == "A29" then corFuselagem = Color3.fromRGB(95, 104, 92) end
-	if P.Id == "F5" then corFuselagem = Color3.fromRGB(128, 136, 142) end
-	if P.Id == "T27" then corFuselagem = Color3.fromRGB(235, 235, 232) end
-	local corDetalhe = Color3.fromRGB(28, 52, 104)
+	local ox, oy, oz = lay.Olho[1], lay.Olho[2], lay.Olho[3]
 
-	local function parte(nome, tam, cf, cor, mat, extra)
-		return novaParte(modelo, nome, tam, cf, raizCF, cor, mat, extra)
-	end
-
-	-- FUSELAGEM, NARIZ E ASAS ---------------------------------------------------
-	local raioF = jato and 0.75 or 0.68
-	local comp = jato and 14 or 9
-	-- a fuselagem e dividida em duas partes, deixando a abertura da cabine
-	local zIni, zFim = 0.5 - comp / 2, 0.5 + comp / 2
-	local frenteFim, trasIni = oz - 0.95, oz + 0.85
-	for _, seg in ipairs({ { zIni, frenteFim }, { trasIni, zFim } }) do
-		local c = seg[2] - seg[1]
-		if c > 0.05 then
-			local f = parte("Fuselagem", Vector3.new(c, raioF * 2, raioF * 2), L(0, 0, (seg[1] + seg[2]) / 2, 0, math.rad(90), 0), corFuselagem, Enum.Material.Metal)
-			f.Shape = Enum.PartType.Cylinder
-		end
-	end
-	-- banheira da cabine (piso e laterais)
-	local largTub = (P.Assentos == "lado") and 1.2 or 0.86
-	parte("PisoCabine", Vector3.new(largTub, 0.06, 1.85), L(0, oy - 1.15, oz - 0.05), PRETO, Enum.Material.Rubber)
-	for _, sx in ipairs({ -1, 1 }) do
-		parte("LateralCabine", Vector3.new(0.05, 0.75, 1.85), L(sx * largTub / 2, oy - 0.8, oz - 0.05), GRAFITE, Enum.Material.Metal)
-		parte("LateralExterna", Vector3.new(0.04, 0.75, 1.85), L(sx * (largTub / 2 + 0.05), oy - 0.8, oz - 0.05), corFuselagem, Enum.Material.Metal)
-	end
-	parte("Antepara", Vector3.new(largTub, 0.75, 0.05), L(0, oy - 0.8, oz + 0.88), GRAFITE, Enum.Material.Metal)
-	-- dorso por tras do canopi
-	parte("Dorso", Vector3.new(0.7, 0.5, comp * 0.45), L(0, raioF * 0.75, oz + 1.6 + comp * 0.2), corFuselagem, Enum.Material.Metal)
-	-- nariz
-	if jato then
-		local cone = parte("Radome", Vector3.new(3.2, raioF * 1.6, raioF * 1.6), L(0, -0.1, oz - 3.2, 0, math.rad(90), 0), corFuselagem, Enum.Material.Metal)
-		cone.Shape = Enum.PartType.Cylinder
-		local ponta = parte("PontaRadome", Vector3.new(raioF * 1.4, raioF * 1.4, raioF * 1.4), L(0, -0.12, oz - 4.8), Color3.fromRGB(90, 96, 100), Enum.Material.SmoothPlastic)
-		ponta.Shape = Enum.PartType.Ball
-		parte("Pitot", Vector3.new(0.05, 0.05, 1.2), L(0, -0.12, oz - 5.6), Color3.fromRGB(200, 200, 200), Enum.Material.Metal)
-		-- entradas de ar laterais
-		for _, s in ipairs({ -1, 1 }) do
-			parte("EntradaAr", Vector3.new(0.5, 0.9, 2.4), L(s * (raioF + 0.15), -0.25, oz + 1.2), corFuselagem, Enum.Material.Metal)
+	-- MALHA ---------------------------------------------------------------------------------
+	local pastaMalhas = ReplicatedStorage:FindFirstChild("FABMalhas")
+	local malha = pastaMalhas and pastaMalhas:FindFirstChild("Sim_" .. P.Id)
+	obj.Animadas = {}
+	obj.Trem = {}
+	if malha then
+		for _, d in ipairs(malha:GetDescendants()) do
+			if d:IsA("BasePart") then
+				local c = d:Clone()
+				for _, filho in ipairs(c:GetChildren()) do
+					if filho:IsA("JointInstance") or filho:IsA("WeldConstraint") then filho:Destroy() end
+				end
+				c.Anchored = false
+				c.Massless = true
+				c.CanCollide = false
+				c.CanQuery = false
+				c.CanTouch = false
+				-- sombras so nas pecas grandes da cabine (evita custo excessivo)
+				c.CastShadow = c.Transparency < 0.5 and (c.Size.Magnitude > 2)
+				c.Parent = modelo
+				if c.Name == "Manche" or c.Name == "MancheBotoes" or c.Name == "Manete" or c.Name == "Helice" then
+					table.insert(obj.Animadas, c)
+				elseif c.Name == "Trem" or c.Name == "TremPneus" then
+					table.insert(obj.Trem, c)
+				end
+			end
 		end
 	else
-		local capo = parte("Capo", Vector3.new(2.2, raioF * 1.8, raioF * 1.8), L(0, -0.12, oz - 2.2, 0, math.rad(90), 0), corFuselagem, Enum.Material.Metal)
-		capo.Shape = Enum.PartType.Cylinder
-		local spinner = parte("Spinner", Vector3.new(0.55, 0.55, 0.55), L(0, -0.15, oz - 3.4), Color3.fromRGB(30, 30, 30), Enum.Material.Metal)
-		spinner.Shape = Enum.PartType.Ball
-		local escape = parte("Escape", Vector3.new(0.25, 0.25, 0.4), L(raioF * 0.9, -0.3, oz - 1.6), Color3.fromRGB(60, 50, 45), Enum.Material.Metal)
-		-- helice: disco translucido + pas que giram
-		local disco = parte("DiscoHelice", Vector3.new(0.05, 2.1, 2.1), L(0, -0.15, oz - 3.35, 0, math.rad(90), 0), Color3.fromRGB(200, 200, 200), Enum.Material.Glass, { Transparency = 0.92 })
-		disco.Shape = Enum.PartType.Cylinder
-		obj.Pas = {}
-		for i = 1, (P.Id == "T25" and 2 or 4) do
-			local pa = parte("Pa", Vector3.new(0.14, 1.05, 0.04), L(0, -0.15, oz - 3.32), PRETO, Enum.Material.SmoothPlastic)
-			pa:SetAttribute("Angulo", (i - 1) * (math.pi * 2 / (P.Id == "T25" and 2 or 4)))
-			table.insert(obj.Pas, pa)
-		end
+		construirSimples(modelo, P, lay)
 	end
-	-- asas
-	local yAsa = jato and -0.15 or -0.55
-	local zAsa = jato and 1.0 or 0.1
-	local corda = jato and 3 or 1.7
-	for _, s in ipairs({ -1, 1 }) do
-		local env = P.Envergadura / 2
-		local asa = parte("Asa", Vector3.new(env - raioF, 0.16, corda), L(s * (raioF + (env - raioF) / 2), yAsa, zAsa + oz * 0 , 0, 0, s * math.rad(jato and -2 or 5)),
-			corFuselagem, Enum.Material.Metal)
-		parte("FaixaAsa", Vector3.new(0.6, 0.17, corda * 0.9), L(s * (env - 0.5), yAsa + (jato and 0 or 0.04), zAsa), corDetalhe, Enum.Material.SmoothPlastic)
-		parte("LuzNavegacao", Vector3.new(0.12, 0.12, 0.2), L(s * env, yAsa, zAsa - corda * 0.3), s > 0 and Color3.fromRGB(40, 255, 80) or Color3.fromRGB(255, 40, 30), Enum.Material.Neon)
-	end
-	if P.Id == "F39" then
-		-- canards
-		for _, s in ipairs({ -1, 1 }) do
-			parte("Canard", Vector3.new(1.6, 0.08, 1.0), L(s * (raioF + 0.75), 0.2, oz + 0.8, 0, 0, s * math.rad(-4)), corFuselagem, Enum.Material.Metal)
-		end
-	end
-	-- leme vertical (visivel olhando para tras)
-	parte("Deriva", Vector3.new(0.15, jato and 2.2 or 1.4, 1.5), L(0, raioF + (jato and 1.1 or 0.7), comp / 2 - 0.5, math.rad(-15), 0, 0), corFuselagem, Enum.Material.Metal)
 
-	-- CABINE -------------------------------------------------------------------
-	local largCab = (P.Assentos == "lado") and 1.15 or 0.78
-	local cxCab = (P.Assentos == "lado") and 0 or ox
-	-- bordas da cabine (soleiras)
-	for _, s in ipairs({ -1, 1 }) do
-		parte("Soleira", Vector3.new(0.12, 0.25, 2.2), L(cxCab + s * largCab / 2, oy - 0.42, oz + 0.2), GRAFITE, Enum.Material.Metal)
-		parte("ConsoleLateral", Vector3.new(0.2, 0.08, 1.2), L(cxCab + s * (largCab / 2 - 0.12), oy - 0.55, oz + 0.05), CINZA_PAINEL, Enum.Material.Metal)
+	-- TELAS ----------------------------------------------------------------------------------
+	for _, t in ipairs(lay.Telas) do
+		local w, h = t.Tam[1], t.Tam[2]
+		local tela = parte(modelo, "Tela_" .. t.Nome, Vector3.new(w, h, 0.004), cfItem(t), Color3.fromRGB(6, 8, 10), Enum.Material.Glass,
+			{ Reflectance = 0.04, CanQuery = true })
+		tela:SetAttribute("Tela", t.Nome)
+		local base = (w > 0.3) and 1400 or 700
+		local cw = (w >= h) and base or math.floor(base * w / h)
+		local ch = (w >= h) and math.floor(base * h / w) or base
+		local g = superficie(tela, Enum.NormalId.Back, Vector2.new(cw, ch), "FAB_" .. t.Nome)
+		table.insert(obj.Guis, g)
+		local quadro = Instance.new("Frame")
+		quadro.Size = UDim2.fromScale(1, 1)
+		quadro.BackgroundColor3 = Color3.new(0, 0, 0)
+		quadro.BorderSizePixel = 0
+		quadro.ClipsDescendants = true
+		quadro.Parent = g
+		local construtor = AV.Paginas[t.Pagina]
+		local pagina = construtor and construtor(quadro, cw, ch)
+		table.insert(obj.Telas, { Nome = t.Nome, Parte = tela, Gui = g, Quadro = quadro, Pagina = pagina, W = cw, H = ch })
 	end
-	-- painel e para-sol
-	local larguraPainel = (P.Assentos == "lado") and 1.1 or 0.74
-	local painelCF = L(cxCab, oy - 0.3, oz - 0.72, math.rad(-8), 0, 0)
-	local painel = parte("Painel", Vector3.new(larguraPainel, 0.34, 0.04), painelCF, PRETO, Enum.Material.SmoothPlastic)
-	parte("ParaSol", Vector3.new(larguraPainel + 0.04, 0.05, 0.28), L(cxCab, oy - 0.11, oz - 0.82), PRETO, Enum.Material.Fabric)
-	parte("PainelInferior", Vector3.new(larguraPainel * 0.8, 0.2, 0.04), L(cxCab, oy - 0.56, oz - 0.66, math.rad(-25), 0, 0), PRETO, Enum.Material.SmoothPlastic)
-	-- canopi: arcos e vidro
-	local alturaCan = 0.55
-	for _, z in ipairs({ oz - 0.95, oz + 0.75 }) do
-		for k = 0, 6 do
-			local a1 = math.pi * k / 7
-			local a2 = math.pi * (k + 1) / 7
-			local x1, y1 = -math.cos(a1) * largCab / 2, math.sin(a1) * alturaCan
-			local x2, y2 = -math.cos(a2) * largCab / 2, math.sin(a2) * alturaCan
-			local cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
-			local seg = math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
-			parte("ArcoCanopi", Vector3.new(seg + 0.01, 0.035, 0.05), L(cxCab + cx, oy - 0.3 + cy, z, 0, 0, math.atan2(y2 - y1, x2 - x1)), PRETO, Enum.Material.Metal)
-		end
-	end
-	for k = 0, 6 do
-		local a = math.pi * (k + 0.5) / 7
-		local x, y = -math.cos(a) * largCab / 2 * 1.02, math.sin(a) * alturaCan * 1.02
-		parte("VidroCanopi", Vector3.new(largCab * 0.47, 0.01, 1.75), L(cxCab + x, oy - 0.3 + y, oz - 0.1, 0, 0, a - math.pi / 2),
-			Color3.fromRGB(200, 220, 235), Enum.Material.Glass, { Transparency = 0.93 })
-	end
-	-- para-brisa frontal inclinado
-	parte("ParaBrisa", Vector3.new(largCab * 0.95, 0.5, 0.01), L(cxCab, oy - 0.05, oz - 1.05, math.rad(-55), 0, 0), Color3.fromRGB(200, 220, 235), Enum.Material.Glass, { Transparency = 0.94 })
 
-	-- manche e manete (articulados por Weld)
-	local function articulada(nome, tam, cfLocal, cor, mat)
-		local p = parte(nome, tam, cfLocal, cor, mat)
+	-- INSTRUMENTOS ANALOGICOS -------------------------------------------------------------------
+	for _, m in ipairs(lay.Mostradores) do
+		local d = m.Diam
+		local suporte = parte(modelo, "Instrumento_" .. m.Nome, Vector3.new(d, d, 0.003), cfItem(m), Color3.new(0, 0, 0), Enum.Material.SmoothPlastic,
+			{ Transparency = 1 })
+		local g = superficie(suporte, Enum.NormalId.Back, Vector2.new(400, 400), "FAB_" .. m.Nome)
+		g.Brightness = 1.1
+		table.insert(obj.Guis, g)
+		local construtor = AV.Mostradores[m.Nome]
+		if construtor then
+			table.insert(obj.Instrumentos, construtor(g, 400))
+		end
+		-- vidro do instrumento
+		local vidro = parte(modelo, "Vidro", Vector3.new(0.002, d, d), cfItem(m, 0, 0, 0.008) * CFrame.Angles(0, math.rad(90), 0),
+			Color3.fromRGB(200, 215, 225), Enum.Material.Glass, { Transparency = 0.88, Shape = Enum.PartType.Cylinder, Reflectance = 0.08 })
+		vidro.Name = "VidroInstrumento"
+	end
+
+	-- INTERRUPTORES ---------------------------------------------------------------------------
+	local ROTULOS = { Bateria = "BAT", Bomba = "BOMBA", Ignicao = "IGNIÇÃO", Mistura = "MISTURA", Magnetos = "MAGNETOS",
+		Partida = "PARTIDA", Luzes = "LUZES", FreioEst = "FREIO EST" }
+	for _, it in ipairs(lay.Interruptores) do
+		local id = it.Id
+		local cfBase = cfItem(it)
+		local base = parte(modelo, "BaseInterruptor", Vector3.new(0.045, 0.06, 0.008), cfBase * CFrame.new(0, 0, 0.004 * E), Color3.fromRGB(34, 35, 38),
+			Enum.Material.Metal, { CanQuery = true })
+		local cfAlav = cfBase * CFrame.new(0, 0, 0.008 * E)
+		local alavanca = parte(modelo, "Alavanca", Vector3.new(0.008, 0.008, 0.03), cfAlav, Color3.fromRGB(205, 208, 212), Enum.Material.Metal, { CanQuery = true })
 		local w = Instance.new("Weld")
 		w.Part0 = raiz
-		w.Part1 = p
-		w.C0 = cfLocal
-		w.Parent = p
-		return p, w, cfLocal
-	end
-	local baseManche = L(ox, oy - 0.95, oz - 0.38)
-	local _, wManche = articulada("Manche", Vector3.new(0.035, 0.42, 0.035), baseManche * L(0, 0.21, 0), PRETO, Enum.Material.Rubber)
-	local _, wPunho = articulada("PunhoManche", Vector3.new(0.06, 0.13, 0.06), baseManche * L(0, 0.45, 0), Color3.fromRGB(30, 30, 30), Enum.Material.Rubber)
-	obj.Manche = { wManche, wPunho }
-	obj.BaseManche = baseManche
-	local baseManete = L(ox - 0.33, oy - 0.62, oz - 0.12)
-	parte("TrilhoManete", Vector3.new(0.05, 0.03, 0.28), baseManete, CINZA_PAINEL, Enum.Material.Metal)
-	local _, wManete = articulada("Manete", Vector3.new(0.05, 0.14, 0.05), baseManete * L(0, 0.08, 0.1), PRETO, Enum.Material.Metal)
-	obj.Manete = wManete
-	obj.BaseManete = baseManete
-
-	-- INSTRUMENTOS ----------------------------------------------------------------
-	local g = Instance.new("SurfaceGui")
-	g.Face = Enum.NormalId.Back
-	g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	g.PixelsPerStud = 900 / (larguraPainel * E)
-	g.LightInfluence = 0
-	g.Brightness = 1.2
-	g.Adornee = painel
-	g.Parent = painel
-	local fundo = Instance.new("Frame")
-	fundo.Size = UDim2.fromScale(1, 1)
-	fundo.BackgroundColor3 = PRETO
-	fundo.BorderSizePixel = 0
-	fundo.Parent = g
-	local W = 900
-	local H = 900 * 0.34 / larguraPainel
-	obj.Instrumentos = {}
-	local I = obj.Instrumentos
-	if not vidro then
-		-- seis basicos + motor (T-25 e T-27)
-		local tam = math.min(H * 0.46, W / 7.5)
-		local x0 = (P.Assentos == "lado") and (W * 0.08 + tam / 2) or (W * 0.5 - tam * 1.15)
-		local dx = tam * 1.12
-		local y1, y2 = H * 0.27, H * 0.74
-		local _, pASI = mostrador(fundo, x0, y1, tam, "KT", 24, { Inicio = 0, Passo = 15, Textos = { "40", "80", "120", "160", "200", "240" }, PassoTexto = 60 })
-		I.ASI = pASI()
-		I.Atitude = horizonte(fundo, x0 + dx, y1, tam, true)
-		local _, pALT = mostrador(fundo, x0 + dx * 2, y1, tam, "ALT", 50, { Inicio = 0, Passo = 7.2, Textos = { "0", "2", "4", "6", "8" }, PassoTexto = 72 })
-		I.Alt100 = pALT(0.42, 4)
-		I.Alt1000 = pALT(0.26, 7, Color3.fromRGB(220, 220, 220))
-		local fTC, pTC = mostrador(fundo, x0, y2, tam, "CURVA", 0)
-		I.Curva = pTC(0.4, 5)
-		local bola = Instance.new("Frame")
-		bola.AnchorPoint = Vector2.new(0.5, 0.5)
-		bola.Position = UDim2.fromScale(0.5, 0.82)
-		bola.Size = UDim2.fromOffset(tam * 0.12, tam * 0.12)
-		bola.BackgroundColor3 = Color3.new(1, 1, 1)
-		bola.ZIndex = 5
-		bola.Parent = fTC
-		local cb = Instance.new("UICorner")
-		cb.CornerRadius = UDim.new(1, 0)
-		cb.Parent = bola
-		I.Bola = bola
-		local fHI = mostrador(fundo, x0 + dx, y2, tam, "", 36)
-		local cartao = Instance.new("Frame")
-		cartao.Size = UDim2.fromScale(1, 1)
-		cartao.BackgroundTransparency = 1
-		cartao.Parent = fHI
-		for i, t in ipairs({ "N", "3", "6", "L", "12", "15", "S", "21", "24", "O", "30", "33" }) do
-			local a = math.rad((i - 1) * 30)
-			local l = rotulo(cartao, t, 0, 0, tam * 0.16, tam * 0.12, tam * 0.1)
-			l.AnchorPoint = Vector2.new(0.5, 0.5)
-			l.Position = UDim2.fromScale(0.5 + math.sin(a) * 0.33, 0.5 - math.cos(a) * 0.33)
-			l.Rotation = (i - 1) * 30
-		end
-		local marcaHI = Instance.new("Frame")
-		marcaHI.AnchorPoint = Vector2.new(0.5, 0)
-		marcaHI.Position = UDim2.fromScale(0.5, 0.04)
-		marcaHI.Size = UDim2.fromOffset(4, tam * 0.12)
-		marcaHI.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
-		marcaHI.ZIndex = 5
-		marcaHI.Parent = fHI
-		I.CartaoRumo = cartao
-		local _, pVSI = mostrador(fundo, x0 + dx * 2, y2, tam, "VS x100", 20, { Inicio = 180, Passo = 9, Textos = { "20", "10", "0", "10", "20" }, PassoTexto = 45 })
-		I.VSI = pVSI()
-		-- motor
-		local tamM = tam * 0.62
-		local xm = x0 + dx * 3 + tam * 0.1
-		local _, pRPM = mostrador(fundo, xm, H * 0.22, tamM, "RPM %", 12, { Inicio = 225, Passo = 22.5 })
-		I.RPM = pRPM()
-		local _, pComb = mostrador(fundo, xm, H * 0.52, tamM, "COMB", 10, { Inicio = 240, Passo = 24 })
-		I.Comb = pComb()
-		local _, pG = mostrador(fundo, xm, H * 0.82, tamM, "G", 12, { Inicio = 240, Passo = 20 })
-		I.G = pG()
-		-- anunciadores
-		local anun = {}
-		for i, nome in ipairs({ "ESTOL", "PARTIDA", "BATERIA", "BOMBA", "FLAPE", "TREM" }) do
-			local a = rotulo(fundo, nome, xm + tamM * 0.7, H * 0.06 + (i - 1) * H * 0.15, W * 0.12, H * 0.12, 13, Color3.fromRGB(60, 60, 60))
-			a.BackgroundTransparency = 0
-			a.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-			anun[nome] = a
-		end
-		I.Anunciadores = anun
-	else
-		-- cabine de vidro: PFD + motor/navegacao
-		local larg = W * 0.43
-		local alt = H * 0.88
-		local function tela(x)
-			local f = Instance.new("Frame")
-			f.Position = UDim2.fromOffset(x, H * 0.06)
-			f.Size = UDim2.fromOffset(larg, alt)
-			f.BackgroundColor3 = Color3.fromRGB(5, 6, 8)
-			f.BorderSizePixel = 0
-			f.Parent = fundo
-			local s = Instance.new("UIStroke")
-			s.Color = Color3.fromRGB(70, 70, 70)
-			s.Thickness = 4
-			s.Parent = f
-			return f
-		end
-		local pfd = tela(W * 0.05)
-		I.Atitude = horizonte(pfd, larg * 0.5, alt * 0.5, alt * 0.72, false)
-		I.TxtVel = rotulo(pfd, "", 4, alt * 0.44, larg * 0.2, alt * 0.12, 22, Color3.new(1, 1, 1), Enum.Font.Code)
-		I.TxtVel.BackgroundColor3 = Color3.new(0, 0, 0)
-		I.TxtVel.BackgroundTransparency = 0.2
-		I.TxtAlt = rotulo(pfd, "", larg * 0.78, alt * 0.44, larg * 0.21, alt * 0.12, 22, Color3.new(1, 1, 1), Enum.Font.Code)
-		I.TxtAlt.BackgroundColor3 = Color3.new(0, 0, 0)
-		I.TxtAlt.BackgroundTransparency = 0.2
-		I.TxtRumo = rotulo(pfd, "", larg * 0.35, alt * 0.88, larg * 0.3, alt * 0.1, 20, Color3.new(1, 1, 1), Enum.Font.Code)
-		I.TxtInfo = rotulo(pfd, "", 6, 4, larg - 12, alt * 0.1, 15, Color3.fromRGB(120, 255, 150), Enum.Font.Code, Enum.TextXAlignment.Left)
-		local mfd = tela(W * 0.52)
-		I.TxtMotor = rotulo(mfd, "", 10, 8, larg - 20, alt * 0.55, 17, Color3.fromRGB(120, 255, 150), Enum.Font.Code, Enum.TextXAlignment.Left)
-		I.TxtMotor.TextYAlignment = Enum.TextYAlignment.Top
-		-- mapa (rumo para cima)
-		local mapa = Instance.new("Frame")
-		mapa.Position = UDim2.fromOffset(10, alt * 0.58)
-		mapa.Size = UDim2.fromOffset(larg - 20, alt * 0.38)
-		mapa.BackgroundColor3 = Color3.fromRGB(10, 14, 20)
-		mapa.ClipsDescendants = true
-		mapa.Parent = mfd
-		local pista = Instance.new("Frame")
-		pista.AnchorPoint = Vector2.new(0.5, 0.5)
-		pista.Size = UDim2.fromOffset(4, 30)
-		pista.BackgroundColor3 = Color3.new(1, 1, 1)
-		pista.Parent = mapa
-		local alvo = Instance.new("Frame")
-		alvo.AnchorPoint = Vector2.new(0.5, 0.5)
-		alvo.Size = UDim2.fromOffset(10, 10)
-		alvo.Rotation = 45
-		alvo.BackgroundColor3 = Color3.fromRGB(255, 80, 200)
-		alvo.Visible = false
-		alvo.Parent = mapa
-		local eu = Instance.new("Frame")
-		eu.AnchorPoint = Vector2.new(0.5, 0.5)
-		eu.Position = UDim2.fromScale(0.5, 0.75)
-		eu.Size = UDim2.fromOffset(10, 10)
-		eu.BackgroundColor3 = Color3.fromRGB(120, 255, 150)
-		eu.Parent = mapa
-		I.Mapa = { Quadro = mapa, Pista = pista, Alvo = alvo }
-	end
-
-	-- INTERRUPTORES INTERATIVOS -----------------------------------------------------
-	local lista = { { "Bateria", "BAT" }, { "Bomba", "BOMBA" } }
-	if jato then
-		table.insert(lista, { "Ignicao", "IGN" })
-	else
-		table.insert(lista, { "Mistura", "MIST" })
-		table.insert(lista, { "Magnetos", "MAG" })
-	end
-	table.insert(lista, { "Partida", "PARTIDA" })
-	table.insert(lista, { "Luzes", "LUZES" })
-	table.insert(lista, { "FreioEst", "FREIO EST" })
-	local n = #lista
-	local larguraFila = math.min(larguraPainel * 0.9, 0.8)
-	for i, item in ipairs(lista) do
-		local id, texto = item[1], item[2]
-		local x = cxCab - larguraFila / 2 + (i - 0.5) * larguraFila / n
-		local cfBase = L(x, oy - 0.58, oz - 0.6, math.rad(-25), 0, 0)
-		local base = parte("BaseInterruptor", Vector3.new(0.07, 0.07, 0.02), cfBase, Color3.fromRGB(70, 70, 70), Enum.Material.Metal, { CanQuery = true })
-		local alavanca = parte("Alavanca", Vector3.new(0.018, 0.05, 0.018), cfBase * L(0, 0, -0.03), Color3.fromRGB(230, 230, 230), Enum.Material.Metal, { CanQuery = true })
-		local wa = Instance.new("Weld")
-		wa.Part0 = raiz
-		wa.Part1 = alavanca
-		wa.C0 = cfBase * L(0, 0, -0.03, math.rad(-35), 0, 0)
-		wa.Parent = alavanca
-		local etiqueta = Instance.new("SurfaceGui")
-		etiqueta.Face = Enum.NormalId.Back
-		etiqueta.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-		etiqueta.CanvasSize = Vector2.new(140, 140)
-		etiqueta.LightInfluence = 0
-		etiqueta.Parent = base
-		local et = rotulo(etiqueta, texto, 0, 92, 140, 40, 22, Color3.new(1, 1, 1))
-		et.TextScaled = true
-		local estadoTxt = rotulo(etiqueta, "OFF", 0, 4, 140, 34, 20, Color3.fromRGB(150, 150, 150))
+		w.Part1 = alavanca
+		w.Parent = alavanca
+		local etiqueta = parte(modelo, "Etiqueta", Vector3.new(0.06, 0.016, 0.002), cfBase * CFrame.new(0, 0.042 * E, 0.002 * E), Color3.fromRGB(28, 28, 30))
+		local g = superficie(etiqueta, Enum.NormalId.Back, Vector2.new(240, 64), "FAB_Etiqueta")
+		g.Brightness = 1
+		table.insert(obj.Guis, g)
+		local txt = Instance.new("TextLabel")
+		txt.Size = UDim2.fromScale(1, 1)
+		txt.BackgroundTransparency = 1
+		txt.Text = ROTULOS[id] or id
+		txt.TextColor3 = Color3.fromRGB(230, 230, 225)
+		txt.Font = Enum.Font.GothamBold
+		txt.TextScaled = true
+		txt.Parent = g
+		local luz = parte(modelo, "LuzInterruptor", Vector3.new(0.008, 0.008, 0.004), cfBase * CFrame.new(0, -0.024 * E, 0.006 * E), Color3.fromRGB(30, 30, 30), Enum.Material.SmoothPlastic)
 		for _, peca in ipairs({ base, alavanca }) do peca:SetAttribute("Interruptor", id) end
-		obj.Interruptores[id] = { Base = base, Alavanca = alavanca, Weld = wa, CF = cfBase, Texto = estadoTxt }
+		obj.Interruptores[id] = { Base = base, Alavanca = alavanca, Weld = w, CF = cfAlav, Luz = luz }
 		obj.Estados[id] = false
 	end
-	if P.TremRetratil then
-		local cfT = L(cxCab + larguraFila / 2 + 0.07, oy - 0.45, oz - 0.68, math.rad(-15), 0, 0)
-		local trem = parte("AlavancaTrem", Vector3.new(0.04, 0.12, 0.04), cfT, Color3.fromRGB(240, 240, 240), Enum.Material.SmoothPlastic, { CanQuery = true })
-		local roda = parte("RodaAlavanca", Vector3.new(0.06, 0.06, 0.06), cfT * L(0, 0.07, 0), Color3.fromRGB(240, 240, 240), Enum.Material.SmoothPlastic, { CanQuery = true })
-		roda.Shape = Enum.PartType.Ball
-		trem:SetAttribute("Interruptor", "Trem")
+	if P.TremRetratil and lay.Trem then
+		local cfT = cfItem(lay.Trem)
+		local haste = parte(modelo, "AlavancaTrem", Vector3.new(0.014, 0.09, 0.014), cfT, Color3.fromRGB(220, 220, 220), Enum.Material.Metal, { CanQuery = true })
+		local roda = parte(modelo, "RodaAlavanca", Vector3.new(0.022, 0.05, 0.05), cfT, Color3.fromRGB(235, 235, 230), Enum.Material.SmoothPlastic,
+			{ CanQuery = true, Shape = Enum.PartType.Cylinder })
+		local wH = Instance.new("Weld")
+		wH.Part0 = raiz
+		wH.Part1 = haste
+		wH.Parent = haste
+		local wR = Instance.new("Weld")
+		wR.Part0 = raiz
+		wR.Part1 = roda
+		wR.Parent = roda
+		haste:SetAttribute("Interruptor", "Trem")
 		roda:SetAttribute("Interruptor", "Trem")
-		obj.Interruptores.Trem = { Base = trem, Alavanca = roda }
+		local luzes = {}
+		for i, dx in ipairs({ 0, -0.016, 0.016 }) do
+			luzes[i] = parte(modelo, "LuzTrem", Vector3.new(0.012, 0.012, 0.004), cfT * CFrame.new((0.055 + dx) * E, (i == 1 and 0.02 or -0.005) * E, 0.004 * E),
+				Color3.fromRGB(20, 40, 20), Enum.Material.SmoothPlastic)
+		end
+		obj.Interruptores.Trem = { Base = haste, Alavanca = roda, WH = wH, WR = wR, CF = cfT, Luzes = luzes }
 	end
-	local cfF = L(ox - 0.33, oy - 0.6, oz + 0.12)
-	local flape = parte("AlavancaFlape", Vector3.new(0.03, 0.07, 0.05), cfF, Color3.fromRGB(200, 200, 200), Enum.Material.Metal, { CanQuery = true })
-	flape:SetAttribute("Interruptor", "Flape")
-	obj.Interruptores.Flape = { Base = flape }
+	if lay.Flape then
+		local cfF = cfItem(lay.Flape)
+		local flape = parte(modelo, "AlavancaFlape", Vector3.new(0.02, 0.05, 0.03), cfF * CFrame.new(0, 0.025 * E, 0), Color3.fromRGB(200, 200, 200),
+			Enum.Material.Metal, { CanQuery = true })
+		flape:SetAttribute("Interruptor", "Flape")
+		obj.Interruptores.Flape = { Base = flape }
+	end
+	obj.LuzesAlerta = {}
+	for _, l in ipairs(lay.Luzes or {}) do
+		table.insert(obj.LuzesAlerta, parte(modelo, "AlertaMestre", Vector3.new(l.Tam[1], l.Tam[2], 0.004), cfItem(l), Color3.fromRGB(60, 40, 10), Enum.Material.SmoothPlastic))
+	end
 
-	-- iluminacao interna suave
-	local luz = Instance.new("PointLight")
-	luz.Range = 3 * E
-	luz.Brightness = 0.25
-	luz.Color = Color3.fromRGB(255, 240, 220)
-	luz.Parent = painel
+	-- HUD: vidro combinador ------------------------------------------------------------------------
+	if P.HUD and lay.HUD then
+		local h = lay.HUD
+		obj.HUDParte = parte(modelo, "VidroHUD", Vector3.new(h.Tam[1], h.Tam[2], 0.003), cfItem(h), Color3.fromRGB(170, 215, 195), Enum.Material.Glass,
+			{ Transparency = 0.86, Reflectance = 0.06 })
+	end
 
-	modelo.Parent = pastaPai or workspace
-	-- a solda e feita depois de tudo posicionado
+	-- PRANCHETA DE JOELHO (escolha de missao) -----------------------------------------------------
+	local centroPr = Vector3.new((ox + 0.13) * E, (oy - 0.66) * E, (oz - 0.22) * E)
+	local olho = Vector3.new(ox * E, oy * E, oz * E)
+	local cfPr = CFrame.lookAt(centroPr, olho) * CFrame.Angles(0, 0, 0)
+	local prancheta = parte(modelo, "Prancheta", Vector3.new(0.17, 0.23, 0.008), cfPr, Color3.fromRGB(36, 38, 40), Enum.Material.SmoothPlastic)
+	parte(modelo, "Presilha", Vector3.new(0.08, 0.02, 0.012), cfPr * CFrame.new(0, 0.11 * E, -0.004 * E), Color3.fromRGB(170, 172, 176), Enum.Material.Metal)
+	local gPr = superficie(prancheta, Enum.NormalId.Front, Vector2.new(520, 700), "FAB_Prancheta")
+	gPr.Brightness = 1.3
+	table.insert(obj.Guis, gPr)
+	local folha = Instance.new("Frame")
+	folha.Size = UDim2.new(1, -16, 1, -16)
+	folha.Position = UDim2.fromOffset(8, 8)
+	folha.BackgroundColor3 = Color3.fromRGB(238, 236, 228)
+	folha.BorderSizePixel = 0
+	folha.Parent = gPr
+	obj.Prancheta = { Parte = prancheta, Gui = gPr, Folha = folha, CF = cfPr }
+
+	-- ILUMINACAO DA CABINE ------------------------------------------------------------------------
+	local luzPainel = parte(modelo, "LuzPainel", Vector3.new(0.02, 0.02, 0.02), CFrame.new(ox * E, (oy - 0.2) * E, (oz - 0.45) * E), PRETO, nil, { Transparency = 1 })
+	local pl = Instance.new("PointLight")
+	pl.Range = 1.6 * E
+	pl.Brightness = 0.35
+	pl.Color = Color3.fromRGB(255, 236, 214)
+	pl.Shadows = false
+	pl.Parent = luzPainel
+
+	-- SOLDA -----------------------------------------------------------------------------------------
+	obj.Pivos = {}
 	for _, p in ipairs(modelo:GetDescendants()) do
-		if p:IsA("BasePart") and p ~= raiz and not p:FindFirstChildOfClass("Weld") then
-			local w = Instance.new("WeldConstraint")
-			w.Part0 = raiz
-			w.Part1 = p
-			w.Parent = p
+		if p:IsA("BasePart") and p ~= raiz then
+			local w = p:FindFirstChildOfClass("Weld")
+			if not w then
+				w = Instance.new("Weld")
+				w.Part0 = raiz
+				w.Part1 = p
+				w.Parent = p
+			end
+			w.C0 = p.CFrame
+			p:SetAttribute("C0", p.CFrame)
+			obj.Pivos[p] = w
 		end
 	end
+	raiz.CFrame = CFrame.new(0, 5000, 0)
+	modelo.Parent = pastaPai or workspace
 
-	-- PARTES QUE PODEM SER TOCADAS ------------------------------------------------
 	obj.PartesInterativas = {}
 	for _, p in ipairs(modelo:GetDescendants()) do
-		if p:IsA("BasePart") and p:GetAttribute("Interruptor") then table.insert(obj.PartesInterativas, p) end
+		if p:IsA("BasePart") and (p:GetAttribute("Interruptor") or p:GetAttribute("Tela")) then table.insert(obj.PartesInterativas, p) end
 	end
 
-	-- destaque do proximo item do checklist
 	local destaque = Instance.new("Highlight")
 	destaque.FillTransparency = 1
 	destaque.OutlineColor = Color3.new(1, 1, 1)
@@ -613,104 +321,78 @@ function CAB.Criar(P, pastaPai)
 		obj.Estados[id] = valor
 		local it = obj.Interruptores[id]
 		if it and it.Weld then
-			it.Weld.C0 = it.CF * L(0, 0, -0.03, math.rad(valor and 35 or -35), 0, 0)
-			it.Texto.Text = valor and "ON" or "OFF"
-			it.Texto.TextColor3 = valor and Color3.new(1, 1, 1) or Color3.fromRGB(150, 150, 150)
+			it.Weld.C0 = it.CF * CFrame.Angles(math.rad(valor and -32 or 32), 0, 0) * CFrame.new(0, 0, 0.012 * E)
+			it.Luz.Color = valor and Color3.fromRGB(80, 255, 120) or Color3.fromRGB(30, 30, 30)
+			it.Luz.Material = valor and Enum.Material.Neon or Enum.Material.SmoothPlastic
 		end
 	end
+	for id in pairs(obj.Interruptores) do
+		if obj.Interruptores[id].Weld then obj.DefinirInterruptor(id, false) end
+	end
 
+	-- pivos em studs no referencial da aeronave
+	local function pivo(t) return t and Vector3.new(t.Pivo[1] * E, t.Pivo[2] * E, t.Pivo[3] * E) end
+	local pManche = pivo(lay.Manche)
+	local pManete = pivo(lay.Manete)
+	local pHelice = pivo(lay.Helice)
 	local anguloHelice = 0
+	local acumulado = 0
+
 	function obj.Atualizar(cf, s, e, dt)
 		raiz.CFrame = cf
-		-- manche e manete
 		local arf = math.clamp(e.Arfagem or 0, -1, 1)
 		local rol = math.clamp(e.Rolagem or 0, -1, 1)
-		local inc = L(0, 0, 0, arf * math.rad(18), 0, -rol * math.rad(18))
-		obj.Manche[1].C0 = obj.BaseManche * inc * L(0, 0.21, 0)
-		obj.Manche[2].C0 = obj.BaseManche * inc * L(0, 0.45, 0)
 		local m = math.clamp(e.Manete or 0, 0, 1)
-		obj.Manete.C0 = obj.BaseManete * L(0, 0.08, 0.1 - m * 0.2, math.rad(-20 + m * 40), 0, 0)
-		-- helice
-		if obj.Pas then
-			local rpm = s.N or 0
-			anguloHelice = anguloHelice + rpm * dt * 55
-			for _, pa in ipairs(obj.Pas) do
-				local w = pa:FindFirstChildOfClass("WeldConstraint")
-				if w then w:Destroy() end
-				local wj = pa:FindFirstChildOfClass("Weld")
-				if not wj then
-					wj = Instance.new("Weld")
-					wj.Part0 = raiz
-					wj.Part1 = pa
-					wj.Parent = pa
+		local rpm = s.N or 0
+		anguloHelice = anguloHelice + rpm * dt * 60
+		for _, p in ipairs(obj.Animadas) do
+			local w = obj.Pivos[p]
+			local c0 = p:GetAttribute("C0")
+			if w and c0 then
+				if (p.Name == "Manche" or p.Name == "MancheBotoes") and pManche then
+					w.C0 = CFrame.new(pManche) * CFrame.Angles(arf * math.rad(14), 0, -rol * math.rad(14)) * CFrame.new(-pManche) * c0
+				elseif p.Name == "Manete" and pManete then
+					w.C0 = CFrame.new(0, 0, -(m - 0.4) * 0.16 * E) * c0
+				elseif p.Name == "Helice" and pHelice then
+					w.C0 = CFrame.new(pHelice) * CFrame.Angles(0, 0, anguloHelice) * CFrame.new(-pHelice) * c0
 				end
-				local ang = pa:GetAttribute("Angulo") + anguloHelice
-				wj.C0 = L(0, -0.15, s.P.Olho[3] - 3.32, 0, 0, ang) * L(0, 0.5, 0)
-				pa.Transparency = rpm > 0.3 and 0.75 or 0
 			end
 		end
-		-- instrumentos
-		local I = obj.Instrumentos
-		local kt = (s.IAS or 0) * 1.943844
-		local ft = (s.Altitude or 0) * 3.28084
-		local fpm = (s.VS or 0) * 196.85
-		if I.Atitude then I.Atitude(s.Arfagem or 0, s.Inclinacao or 0) end
-		if I.ASI then
-			I.ASI.Rotation = (math.clamp(kt, 0, 260) - 40) * 1.5
-			I.Alt100.Rotation = (ft % 1000) / 1000 * 360
-			I.Alt1000.Rotation = (ft % 10000) / 10000 * 360
-			I.VSI.Rotation = 270 + math.clamp(fpm, -2000, 2000) / 2000 * 90
-			I.CartaoRumo.Rotation = -(s.Rumo or 0)
-			local taxa = math.deg(-(s.wy or 0))
-			I.Curva.Rotation = math.clamp(taxa / 3 * 20, -40, 40)
-			I.Bola.Position = UDim2.fromScale(0.5 + math.clamp((s.BetaGraus or 0) / 15, -0.3, 0.3), 0.82)
-			I.RPM.Rotation = 225 + (s.N or 0) * 270
-			I.Comb.Rotation = 240 + math.clamp((s.Combustivel or 0) / s.P.Combustivel, 0, 1) * 240
-			I.G.Rotation = 240 + math.clamp(((s.Nz or 1) + 2) / 10, 0, 1) * 220
-			local A = I.Anunciadores
-			local function anun(nome, ligado, cor)
-				A[nome].TextColor3 = ligado and Color3.new(0, 0, 0) or Color3.fromRGB(60, 60, 60)
-				A[nome].BackgroundColor3 = ligado and (cor or Color3.fromRGB(255, 190, 0)) or Color3.fromRGB(25, 25, 25)
+		local tremEmbaixo = (s.Trem or 1) > 0.5
+		for _, p in ipairs(obj.Trem) do p.LocalTransparencyModifier = tremEmbaixo and 0 or 1 end
+		local tr = obj.Interruptores.Trem
+		if tr and tr.WH then
+			local alvo = e.Trem and -1 or 1
+			local cfAlav = tr.CF * CFrame.Angles(math.rad(alvo * 25), 0, 0)
+			tr.WH.C0 = cfAlav * CFrame.new(0, 0.045 * E, 0.01 * E)
+			tr.WR.C0 = cfAlav * CFrame.new(0, 0.09 * E, 0.014 * E) * CFrame.Angles(0, math.rad(90), 0)
+			local t = s.Trem or 0
+			for _, l in ipairs(tr.Luzes) do
+				local cor = t > 0.98 and Color3.fromRGB(60, 255, 100) or (t > 0.02 and Color3.fromRGB(255, 50, 40) or Color3.fromRGB(20, 30, 20))
+				l.Color = cor
+				l.Material = (t > 0.02) and Enum.Material.Neon or Enum.Material.SmoothPlastic
 			end
-			anun("ESTOL", s.AvisoEstol, Color3.fromRGB(255, 50, 40))
-			anun("PARTIDA", s.Partindo == true)
-			anun("BATERIA", obj.Estados.Bateria, Color3.fromRGB(80, 255, 120))
-			anun("BOMBA", obj.Estados.Bomba, Color3.fromRGB(80, 255, 120))
-			anun("FLAPE", (s.Flap or 0) > 0.05, Color3.fromRGB(80, 255, 120))
-			anun("TREM", (s.Trem or 0) > 0.98, Color3.fromRGB(80, 255, 120))
-		else
-			I.TxtVel.Text = string.format("%d", math.floor(kt + 0.5))
-			I.TxtAlt.Text = string.format("%d", math.floor(ft / 10 + 0.5) * 10)
-			I.TxtRumo.Text = string.format("%03d°", math.floor((s.Rumo or 0) + 0.5) % 360)
-			I.TxtInfo.Text = string.format("G %.1f  AOA %.0f  M %.2f  VS %d", s.Nz or 1, s.AlfaGraus or 0, s.Mach or 0, math.floor(fpm))
-			local motor = (s.P.Tipo == "jato") and string.format("N2  %3d%%\nPÓS %s", math.floor((s.N or 0) * 100), (s.PosCombustor or 0) > 0.5 and "LIGADO" or "-")
-				or string.format("TQ  %3d%%", math.floor((s.FracaoMotor or 0) * 100))
-			I.TxtMotor.Text = string.format("%s\nCOMB %d kg\nTREM %s\nFLAPE %d%%\nFREIO AR %s\n%s",
-				motor, math.floor(s.Combustivel or 0), (s.Trem or 0) > 0.98 and "EMBAIXO" or ((s.Trem or 0) < 0.02 and "RECOLHIDO" or "EM TRÂNSITO"),
-				math.floor((s.Flap or 0) * 100), (s.AeroFreio or 0) > 0.5 and "ABERTO" or "-", s.AvisoEstol and "ALERTA DE ESTOL" or "")
-			-- mapa: escala 1 px = 20 m, rumo para cima
-			local mp = I.Mapa
-			local rumo = math.rad(s.Rumo or 0)
-			local function projetar(xm, zm)
-				local dx, dz = xm - s.px, zm - s.pz
-				-- gira para o referencial com o rumo para cima
-				local frente = dx * math.sin(rumo) - dz * math.cos(rumo)
-				local direita = dx * math.cos(rumo) + dz * math.sin(rumo)
-				return UDim2.new(0.5, direita / 20, 0.75, -frente / 20)
+		end
+		local alerta = s.AvisoEstol or ((s.Combustivel or 1) / (s.P.Combustivel or 1) < 0.15)
+		for _, l in ipairs(obj.LuzesAlerta) do
+			local pisca = alerta and (os.clock() % 0.6 < 0.3)
+			l.Color = pisca and Color3.fromRGB(255, 170, 20) or Color3.fromRGB(60, 40, 10)
+			l.Material = pisca and Enum.Material.Neon or Enum.Material.SmoothPlastic
+		end
+		-- telas e instrumentos a 20 quadros por segundo
+		acumulado = acumulado + dt
+		if acumulado >= 0.05 then
+			local ctx = { Estados = obj.Estados, AlvoMapa = obj.AlvoMapa }
+			for _, t in ipairs(obj.Telas) do
+				if t.Pagina and not t.Coberta then t.Pagina.Atualizar(s, ctx, acumulado) end
 			end
-			mp.Pista.Position = projetar(0, 0)
-			mp.Pista.Rotation = -(s.Rumo or 0)
-			mp.Pista.Size = UDim2.fromOffset(4, 3000 / 20)
-			if obj.AlvoMapa then
-				mp.Alvo.Visible = true
-				mp.Alvo.Position = projetar(obj.AlvoMapa.X, obj.AlvoMapa.Z)
-			else
-				mp.Alvo.Visible = false
-			end
+			for _, f in ipairs(obj.Instrumentos) do f(s, ctx) end
+			acumulado = 0
 		end
 	end
 
 	function obj.Destruir()
+		for _, g in ipairs(obj.Guis) do g:Destroy() end
 		modelo:Destroy()
 	end
 

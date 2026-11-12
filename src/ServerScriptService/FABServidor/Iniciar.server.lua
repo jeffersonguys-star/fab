@@ -18,6 +18,7 @@ local function iniciar(nome, ...)
 	end
 end
 
+iniciar("Malhas")
 iniciar("Mapa")
 iniciar("OrdemUnida")
 iniciar("TACF")

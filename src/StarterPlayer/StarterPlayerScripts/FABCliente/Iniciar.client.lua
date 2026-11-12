@@ -8,7 +8,7 @@ local UI = require(ReplicatedStorage:WaitForChild("FAB"):WaitForChild("UI"))
 UI.Iniciar()
 
 local pasta = script.Parent
-for _, nome in ipairs({ "OrdemUnida", "TACF", "Salto", "Sobrevivencia", "Teoria", "Fisiologico", "Instrutor", "Simulador" }) do
+for _, nome in ipairs({ "OrdemUnida", "TACF", "Salto", "Sobrevivencia", "Teoria", "Fisiologico", "Instrutor", "Simulador", "TVSimulador" }) do
 	local ok, erro = pcall(function()
 		require(pasta:WaitForChild(nome)).Iniciar(UI)
 	end)

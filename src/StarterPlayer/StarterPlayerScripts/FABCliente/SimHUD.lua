@@ -1,10 +1,11 @@
 --[[
 	FAB - HUD e paineis de tela do simulador (cliente)
 
-	HUD (A-29, F-5EM e F-39E): escada de arfagem, horizonte, marcador de trajetoria
-	(FPM), referencia do eixo da aeronave, velocidade, altitude, rumo, G, Mach, angulo
-	de ataque, altimetro radar, alertas e designador de alvo. A simbologia e projetada
-	a partir da camera, como um HUD colimado no infinito.
+	HUD (A-29, F-5EM e F-39E): desenhado no vidro combinador da cabine (SurfaceGui),
+	com escada de arfagem, horizonte, marcador de trajetoria (FPM), referencia do eixo,
+	velocidade, altitude, rumo, G, Mach, angulo de ataque, altimetro radar e alertas.
+	A simbologia e conforme: cada simbolo e projetado do olho do piloto, atraves do
+	plano do vidro, na direcao real do mundo, como num HUD colimado no infinito.
 
 	Para todas as aeronaves: faixa de dados (preto e branco), objetivos da licao,
 	cronometro e mensagens do instrutor.
@@ -38,7 +39,7 @@ local function texto(pai, t, tam, alinh)
 	return l
 end
 
-function HUD.Criar(UI, P)
+function HUD.Criar(UI, P, cab)
 	local COR = UI.Cor
 	local obj = {}
 	local tela = UI.Novo("ScreenGui", { Name = "FABSimHUD", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 7,
@@ -46,84 +47,102 @@ function HUD.Criar(UI, P)
 	obj.Tela = tela
 
 	-- HUD -----------------------------------------------------------------------
-	local temHUD = P.HUD == true
-	local ok, caixa = pcall(function() return Instance.new("CanvasGroup") end)
-	if not ok then caixa = Instance.new("Frame") caixa.ClipsDescendants = true end
+	local temHUD = P.HUD == true and cab and cab.HUDParte ~= nil
+	local vidro = cab and cab.HUDParte
+	local CW, CH = 600, 600
+	if vidro then CH = math.floor(600 * vidro.Size.Y / vidro.Size.X) end
+	local gHUD
+	local caixa = Instance.new("Frame")
 	caixa.Name = "HUD"
-	caixa.AnchorPoint = Vector2.new(0.5, 0.5)
-	caixa.Position = UDim2.fromScale(0.5, 0.45)
-	caixa.Size = UDim2.fromScale(0.5, 0.7)
+	caixa.Size = UDim2.fromScale(1, 1)
 	caixa.BackgroundTransparency = 1
-	caixa.Visible = temHUD
-	caixa.Parent = tela
-	if caixa:IsA("CanvasGroup") then caixa.GroupTransparency = 0.05 end
+	caixa.ClipsDescendants = true
+	if temHUD then
+		gHUD = Instance.new("SurfaceGui")
+		gHUD.Name = "FAB_HUD"
+		gHUD.Face = Enum.NormalId.Back
+		gHUD.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+		gHUD.CanvasSize = Vector2.new(CW, CH)
+		gHUD.LightInfluence = 0
+		gHUD.Brightness = 2.2
+		gHUD.AlwaysOnTop = false
+		gHUD.ResetOnSpawn = false
+		gHUD.Adornee = vidro
+		gHUD.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+		caixa.Parent = gHUD
+	end
+	local K = CW / 600
+	local function linhaH(w, h) return linha(caixa, w * K, h * K) end
 	local escada = {}
 	for i = 1, 13 do
 		local l = Instance.new("Frame")
 		l.AnchorPoint = Vector2.new(0.5, 0.5)
-		l.Size = UDim2.fromOffset(220, 16)
+		l.Size = UDim2.fromOffset(300 * K, 22 * K)
 		l.BackgroundTransparency = 1
 		l.Parent = caixa
-		local esq = linha(l, 80, 2)
-		esq.Position = UDim2.new(0, 40, 0.5, 0)
-		local dir = linha(l, 80, 2)
-		dir.Position = UDim2.new(1, -40, 0.5, 0)
-		local tE = texto(l, "", 13)
-		tE.Position = UDim2.new(0, -18, 0.5, 0)
-		tE.Size = UDim2.fromOffset(30, 16)
-		local tD = texto(l, "", 13)
-		tD.Position = UDim2.new(1, 18, 0.5, 0)
-		tD.Size = UDim2.fromOffset(30, 16)
-		local pernaE = linha(l, 2, 8)
-		pernaE.Position = UDim2.new(0, 1, 0.5, 4)
-		local pernaD = linha(l, 2, 8)
-		pernaD.Position = UDim2.new(1, -1, 0.5, 4)
+		local esq = linha(l, 110 * K, 3 * K)
+		esq.Position = UDim2.new(0, 55 * K, 0.5, 0)
+		local dir = linha(l, 110 * K, 3 * K)
+		dir.Position = UDim2.new(1, -55 * K, 0.5, 0)
+		local tE = texto(l, "", 20 * K)
+		tE.Position = UDim2.new(0, -24 * K, 0.5, 0)
+		tE.Size = UDim2.fromOffset(40 * K, 22 * K)
+		local tD = texto(l, "", 20 * K)
+		tD.Position = UDim2.new(1, 24 * K, 0.5, 0)
+		tD.Size = UDim2.fromOffset(40 * K, 22 * K)
+		local pernaE = linha(l, 3 * K, 12 * K)
+		pernaE.Position = UDim2.new(0, 1, 0.5, 6 * K)
+		local pernaD = linha(l, 3 * K, 12 * K)
+		pernaD.Position = UDim2.new(1, -1, 0.5, 6 * K)
 		escada[i] = { Quadro = l, E = esq, D = dir, TE = tE, TD = tD, PE = pernaE, PD = pernaD }
 	end
 	-- marcador de trajetoria (FPM)
 	local fpm = Instance.new("Frame")
 	fpm.AnchorPoint = Vector2.new(0.5, 0.5)
-	fpm.Size = UDim2.fromOffset(16, 16)
+	fpm.Size = UDim2.fromOffset(24 * K, 24 * K)
 	fpm.BackgroundTransparency = 1
 	fpm.Parent = caixa
 	local anel = Instance.new("UIStroke")
 	anel.Color = VERDE
-	anel.Thickness = 2
+	anel.Thickness = 3 * K
 	anel.Parent = fpm
 	local cfpm = Instance.new("UICorner")
 	cfpm.CornerRadius = UDim.new(1, 0)
 	cfpm.Parent = fpm
-	local asaE = linha(fpm, 14, 2)
-	asaE.Position = UDim2.new(0, -8, 0.5, 0)
-	local asaD = linha(fpm, 14, 2)
-	asaD.Position = UDim2.new(1, 8, 0.5, 0)
-	local cauda = linha(fpm, 2, 8)
-	cauda.Position = UDim2.new(0.5, 0, 0, -5)
+	local asaE = linha(fpm, 22 * K, 3 * K)
+	asaE.Position = UDim2.new(0, -12 * K, 0.5, 0)
+	local asaD = linha(fpm, 22 * K, 3 * K)
+	asaD.Position = UDim2.new(1, 12 * K, 0.5, 0)
+	local cauda = linha(fpm, 3 * K, 12 * K)
+	cauda.Position = UDim2.new(0.5, 0, 0, -7 * K)
 	-- referencia do eixo (W)
-	local eixo = texto(caixa, "-^-", 18)
+	local eixo = texto(caixa, "-^-", 28 * K)
 	-- caixas de velocidade, altitude e rumo
-	local vel = texto(caixa, "", 20)
-	vel.Position = UDim2.fromScale(0.12, 0.5)
-	local mach = texto(caixa, "", 14)
-	mach.Position = UDim2.fromScale(0.12, 0.58)
-	local gTxt = texto(caixa, "", 14)
-	gTxt.Position = UDim2.fromScale(0.12, 0.66)
-	local aoa = texto(caixa, "", 14)
-	aoa.Position = UDim2.fromScale(0.12, 0.74)
-	local alt = texto(caixa, "", 20)
-	alt.Position = UDim2.fromScale(0.88, 0.5)
-	local radar = texto(caixa, "", 14)
-	radar.Position = UDim2.fromScale(0.88, 0.58)
-	local vsTxt = texto(caixa, "", 14)
-	vsTxt.Position = UDim2.fromScale(0.88, 0.42)
-	local rumo = texto(caixa, "", 18)
-	rumo.Position = UDim2.fromScale(0.5, 0.06)
-	local alerta = texto(caixa, "", 22)
-	alerta.Position = UDim2.fromScale(0.5, 0.82)
-	alerta.Size = UDim2.fromOffset(260, 28)
-	local estado = texto(caixa, "", 14)
+	local vel = texto(caixa, "", 30 * K)
+	vel.Position = UDim2.fromScale(0.14, 0.5)
+	local mach = texto(caixa, "", 20 * K)
+	mach.Position = UDim2.fromScale(0.14, 0.6)
+	local gTxt = texto(caixa, "", 20 * K)
+	gTxt.Position = UDim2.fromScale(0.14, 0.68)
+	local aoa = texto(caixa, "", 20 * K)
+	aoa.Position = UDim2.fromScale(0.14, 0.76)
+	local alt = texto(caixa, "", 30 * K)
+	alt.Position = UDim2.fromScale(0.86, 0.5)
+	local radar = texto(caixa, "", 20 * K)
+	radar.Position = UDim2.fromScale(0.86, 0.6)
+	local vsTxt = texto(caixa, "", 20 * K)
+	vsTxt.Position = UDim2.fromScale(0.86, 0.4)
+	local rumo = texto(caixa, "", 26 * K)
+	rumo.Position = UDim2.fromScale(0.5, 0.08)
+	local alerta = texto(caixa, "", 30 * K)
+	alerta.Position = UDim2.fromScale(0.5, 0.8)
+	alerta.Size = UDim2.fromOffset(360 * K, 36 * K)
+	local estado = texto(caixa, "", 20 * K)
 	estado.Position = UDim2.fromScale(0.5, 0.9)
-	estado.Size = UDim2.fromOffset(300, 20)
+	estado.Size = UDim2.fromOffset(420 * K, 26 * K)
+	for _, l in ipairs({ vel, alt, rumo, mach, gTxt, aoa, radar, vsTxt, alerta, estado }) do l.Size = UDim2.fromOffset(math.max(l.Size.X.Offset, 160 * K), 34 * K) end
+	if not temHUD then caixa.Visible = false end
+
 	-- designador de alvo
 	local alvo = Instance.new("Frame")
 	alvo.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -153,7 +172,7 @@ function HUD.Criar(UI, P)
 	-- FAIXA DE DADOS (preto e branco) --------------------------------------------------
 	local faixa = UI.Novo("TextLabel", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -16), Size = UDim2.fromOffset(0, 30),
 		AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = COR.Fundo, BackgroundTransparency = 0.3, Text = "", TextSize = 13,
-		Font = Enum.Font.GothamMedium, TextColor3 = COR.Branco, Parent = tela })
+		Font = Enum.Font.GothamMedium, TextColor3 = COR.Branco, Visible = false, Parent = tela })
 	UI.Novo("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), Parent = faixa })
 	UI.Canto(faixa, 15)
 	obj.Faixa = faixa
@@ -181,6 +200,7 @@ function HUD.Criar(UI, P)
 	function obj.Objetivos(lista)
 		for _, l in ipairs(linhasObj) do l:Destroy() end
 		linhasObj = {}
+		painelObj.Visible = #lista > 0
 		for i, t in ipairs(lista) do
 			linhasObj[i] = UI.Rotulo(painelObj, "○  " .. t, 13, { LayoutOrder = i })
 		end
@@ -244,13 +264,21 @@ function HUD.Criar(UI, P)
 			wp.Visible = false
 		end
 		if not temHUD then return end
-		caixa.Visible = not olhando
-		if olhando then return end
 		local origem = cam.CFrame.Position
-		local abs = caixa.AbsolutePosition
+		local cfV = vidro.CFrame
+		local nrm = cfV.LookVector * -1
+		local tam = vidro.Size
+		-- direcao do mundo -> ponto no vidro (pixels do SurfaceGui)
 		local function local2(pMundo)
-			local v = cam:WorldToViewportPoint(pMundo)
-			return Vector2.new(v.X - abs.X, v.Y - abs.Y), v.Z > 0
+			local d = pMundo - origem
+			local den = d:Dot(nrm)
+			if math.abs(den) < 1e-6 then return Vector2.new(-9999, -9999), false end
+			local t = (cfV.Position - origem):Dot(nrm) / den
+			if t <= 0 then return Vector2.new(-9999, -9999), false end
+			local hit = origem + d * t - cfV.Position
+			local x = hit:Dot(cfV.RightVector) / tam.X
+			local y = hit:Dot(cfV.UpVector) / tam.Y
+			return Vector2.new((x + 0.5) * CW, (0.5 - y) * CH), true
 		end
 		local frente = cfAeronave.LookVector
 		local horiz = Vector3.new(frente.X, 0, frente.Z)

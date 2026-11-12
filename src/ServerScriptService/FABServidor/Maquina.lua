@@ -333,6 +333,18 @@ local function construir(nome, base, lado, numero)
 	local colunaStatus = C.Parte(fixo, "LuzStatus", Vector3.new(0.5, 1.2, 0.5), entrada * CFrame.new(0, 5.6, 0), Color3.fromRGB(40, 255, 90), Enum.Material.Neon)
 	local luzStatus = C.Luz(colunaStatus, "PointLight", { Range = 8, Brightness = 1, Color = Color3.fromRGB(40, 255, 90) })
 
+	-- televisao externa: mostra aos outros cadetes a visao do piloto, com ligacao por telemetria
+	local tvCF = base * CFrame.new(0, 0, -22)
+	C.Parte(fixo, "TVPe", Vector3.new(7, 0.5, 3.4), tvCF * CFrame.new(0, 0.25, 0), GRAFITE, Enum.Material.Metal)
+	C.Parte(fixo, "TVColuna", Vector3.new(0.9, 4.6, 0.9), tvCF * CFrame.new(0, 2.8, 0), ACO, Enum.Material.Metal)
+	C.Parte(fixo, "TVMoldura", Vector3.new(17.6, 10.6, 0.8), tvCF * CFrame.new(0, 9.6, 0), Color3.fromRGB(12, 12, 14), Enum.Material.SmoothPlastic)
+	local tv = C.Parte(fixo, "TVTela", Vector3.new(16.6, 9.6, 0.3), tvCF * CFrame.new(0, 9.6, -0.5), Color3.fromRGB(4, 4, 6), Enum.Material.SmoothPlastic)
+	C.Parte(fixo, "TVLed", Vector3.new(1.2, 0.18, 0.2), tvCF * CFrame.new(0, 4.2, -0.5), Color3.fromRGB(60, 140, 255), Enum.Material.Neon)
+	tv:SetAttribute("TVSim", true)
+	tv:SetAttribute("Angulo", 1)
+	tv:SetAttribute("Ativo", false)
+	tv:SetAttribute("Maquina", numero)
+
 	-- luzes de piso e destaque da maquina
 	for k = 0, 3 do
 		local a = math.rad(45 + k * 90)
@@ -344,7 +356,7 @@ local function construir(nome, base, lado, numero)
 		Modelo = m, Base = base, Raiz = raiz, Neutro = cfNeutro, Atuadores = atuadores,
 		JuntasBaixo = juntasBaixo, JuntasCima = juntasCima, Porta = porta, PortaPartes = { porta, macaneta, visor },
 		Ponte = ponte, GuardasPonte = { corrPonte, corrPonte2 }, Dobradica = dobradica, Pistao = pistao, Torre = torre,
-		Lente = lente, LuzGiro = luzGiro, Leds = leds, Telas = telas, Ceu = ceu, Status = textoStatus,
+		TV = tv, Lente = lente, LuzGiro = luzGiro, Leds = leds, Telas = telas, Ceu = ceu, Status = textoStatus,
 		LuzStatus = colunaStatus, LuzStatusLuz = luzStatus, Totem = totem, Assento = interior * CFrame.new(0, 3.2, 1),
 		Saida = CFrame.new(topo + Vector3.new(0, 3, 0)), Pe = CFrame.new(pe + Vector3.new(-lado * 2, 3, 0)),
 		Pose = { Arf = 0, Rol = 0, Alt = 0, Gui = 0 }, Alvo = { Arf = 0, Rol = 0, Alt = 0, Gui = 0 },
@@ -456,6 +468,7 @@ function MAQ.Iniciar(N)
 		if not maq then return end
 		porJogador[plr] = nil
 		maq.Telemetria = nil
+		maq.TV:SetAttribute("Ativo", false)
 		maq.Alvo = { Arf = 0, Rol = 0, Alt = 0, Gui = 0 }
 		local s = N.Sessao(plr)
 		if s and s.Simulador then
@@ -494,6 +507,14 @@ function MAQ.Iniciar(N)
 			animarNumero(maq.AnguloPonte, math.rad(70), 3, function(v) maq.AnguloPonte = v; aplicarPonte(maq) end)
 			abrirMenu(plr, maq)
 		end, 12)
+	end
+
+	local NOMES_ANGULO = { "Cabine", "Perseguição", "Lateral", "Torre" }
+	for _, maq in ipairs(maquinas) do
+		N.Prompt(maq.TV, "Monitor do simulador " .. string.format("%02d", maq.Numero), "Trocar ângulo da câmera", function()
+			local a = (maq.TV:GetAttribute("Angulo") or 1) % #NOMES_ANGULO + 1
+			maq.TV:SetAttribute("Angulo", a)
+		end, 20)
 	end
 
 	N.RegistrarAcao("Sim_Iniciar", function(plr, p)
@@ -553,6 +574,20 @@ function MAQ.Iniciar(N)
 		local maq = porJogador[plr]
 		if not maq or type(t) ~= "table" then return end
 		maq.Telemetria = t
+		do
+			local tv = maq.TV
+			local function num(v, lim) return math.clamp(tonumber(v) or 0, -lim, lim) end
+			tv:SetAttribute("Pos", Vector3.new(num(t.X, 1e6), num(t.Y, 2e5), num(t.Z, 1e6)))
+			tv:SetAttribute("Att", Vector3.new(num(t.Rumo, 720), num(t.Arf, 180), num(t.Inc, 720)))
+			tv:SetAttribute("Anv", type(t.AnvId) == "string" and string.sub(t.AnvId, 1, 8) or "")
+			tv:SetAttribute("Virt", t.Virt == true)
+			tv:SetAttribute("Cadete", plr.DisplayName)
+			tv:SetAttribute("Lic", type(t.Lic) == "string" and string.sub(t.Lic, 1, 60) or "")
+			tv:SetAttribute("Dados", string.format("IAS %d kt   ALT %d ft   RUMO %03d   VS %+d fpm   G %.1f   M %.2f",
+				math.floor(num(t.IAS, 2000)), math.floor(num(t.Alt, 99999)), math.floor(num(t.Rumo, 720)) % 360, math.floor(num(t.VS, 99999)),
+				num(t.G, 20), num(t.M, 10)))
+			tv:SetAttribute("Ativo", true)
+		end
 		local arf = math.rad(tonumber(t.Arf) or 0)
 		local rol = math.rad(tonumber(t.Inc) or 0)
 		local ax = tonumber(t.Ax) or 0 -- aceleracao longitudinal (G)
@@ -610,7 +645,7 @@ function MAQ.Iniciar(N)
 					maq.Ceu.Rotation = -inc
 					maq.Ceu.Position = UDim2.new(0.5, 0, 0.5 + arf / 90, 0)
 				elseif ocupante then
-					maq.Telas[1].Texto.Text = "CADETE  " .. ocupante.DisplayName .. "\n\nAGUARDANDO A ESCOLHA DA LIÇÃO"
+					maq.Telas[1].Texto.Text = "CADETE  " .. ocupante.DisplayName .. "\n\nINICIANDO A SIMULAÇÃO"
 					maq.Telas[2].Texto.Text = ""
 					maq.Telas[3].Texto.Text = "PLATAFORMA EM REPOUSO"
 				else

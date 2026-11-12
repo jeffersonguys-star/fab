@@ -1,7 +1,9 @@
 --[[
 	FAB - Simulador de voo (cliente)
 
-	Fluxo: menu de licoes (dentro da maquina) > briefing > voo > resultado.
+	Fluxo: ao entrar na maquina o piloto ja esta na cabine, em voo livre, no solo de uma pista
+	virtual (sem menu). O botao MENU abre as licoes e a saida. Licao > briefing > voo > resultado,
+	e depois volta ao voo livre.
 	Durante o voo, a fisica (Fisica.lua) roda a 240 Hz, a camera fica no olho do
 	piloto dentro da cabine 3D, sobre o mapa real da ilha, e a atitude da aeronave
 	e enviada ao servidor para mover a plataforma da maquina.
@@ -26,6 +28,7 @@ function SIM.Iniciar(UI)
 	local CTRL = require(pasta:WaitForChild("SimControles"))
 	local HUD = require(pasta:WaitForChild("SimHUD"))
 	local CEN = require(pasta:WaitForChild("SimCenario"))
+	local PV = require(pasta:WaitForChild("SimPistaVirtual"))
 	local LIC = require(pasta:WaitForChild("SimLicoes"))
 	local E = MD.StudPorMetro
 	local camera = workspace.CurrentCamera
@@ -33,6 +36,9 @@ function SIM.Iniciar(UI)
 
 	local voo -- sessao atual
 	local noSimulador = false
+	local listaLicoes -- ultima lista enviada pelo servidor
+	local aeronaveLivre = nil
+	local iniciarVoo, iniciarLivre
 
 	local function solo(xm, zm)
 		local h, tipo = MD.Altura(xm * E, zm * E)
@@ -58,22 +64,49 @@ function SIM.Iniciar(UI)
 		if UI.BarraSuperior then UI.BarraSuperior.Visible = true end
 	end
 
-	-- MENU DE LICOES -------------------------------------------------------------------
-	local function abrirMenu(p)
+	-- MENU (so quando o piloto pede, pelo botao MENU) --------------------------------------
+	local function aeronavesLiberadas(p)
+		local lista, vistos = {}, {}
+		for _, l in ipairs(p.Licoes) do
+			if not vistos[l.Aeronave] then
+				vistos[l.Aeronave] = { Id = l.Aeronave, Nome = l.NomeAeronave, Liberada = false }
+				table.insert(lista, vistos[l.Aeronave])
+			end
+			if l.Liberado then vistos[l.Aeronave].Liberada = true end
+		end
+		return lista
+	end
+
+	local function abrirMenu(p, aoFechar)
 		while UI.ModalAberto() do task.wait(0.2) end
-		noSimulador = true
 		local m = UI.Modal({ Titulo = "Simulador " .. string.format("%02d", p.Maquina or 1), Sobretitulo = "Centro de Simulação de Voo",
-			Largura = 600, Altura = 640, SemFechar = true })
+			Largura = 600, Altura = 640 })
 		UI.Rotulo(m.Conteudo, string.format("Horas de simulador: %.1f  ·  Cheques são avaliados por um instrutor.", (p.Horas or 0) / 3600), 13,
 			{ TextColor3 = COR.Sub, LayoutOrder = 0 })
-		local ordem = 0
+		local ordem = 1
+		UI.Secao(m.Conteudo, "Voo livre  ·  pista virtual", ordem)
+		for _, a in ipairs(aeronavesLiberadas(p)) do
+			ordem = ordem + 1
+			UI.Item(m.Conteudo, a.Nome, a.Id == aeronaveLivre and "Em uso" or (a.Liberada and "Toque para trocar de aeronave" or "Conclua uma lição desta aeronave"),
+				a.Liberada and (a.Id == aeronaveLivre and "Em uso" or "Disponível") or "Bloqueado", function()
+					if not a.Liberada then return end
+					m.Fechar()
+					aeronaveLivre = a.Id
+					iniciarLivre()
+				end, ordem)
+		end
+		ordem = ordem + 1
+		UI.Item(m.Conteudo, "Reposicionar na cabeceira", "Volta ao início da pista, com a aeronave parada", "Disponível", function()
+			m.Fechar()
+			iniciarLivre()
+		end, ordem)
 		local atual
 		for _, l in ipairs(p.Licoes) do
 			if l.Aeronave ~= atual then
 				atual = l.Aeronave
 				ordem = ordem + 1
 				local P = Aeronaves[l.Aeronave]
-				UI.Secao(m.Conteudo, l.NomeAeronave .. "  ·  " .. P.Funcao, ordem)
+				UI.Secao(m.Conteudo, "Lições  ·  " .. l.NomeAeronave .. "  ·  " .. P.Funcao, ordem)
 			end
 			ordem = ordem + 1
 			local estado = l.Aprovado and "Aprovado" or (l.Pendente and "Aguardando" or (l.Liberado and "Disponível" or "Bloqueado"))
@@ -87,26 +120,62 @@ function SIM.Iniciar(UI)
 		UI.Botao(m.Rodape, "Sair do simulador", "secundario", function()
 			m.Fechar()
 			noSimulador = false
+			encerrarVoo()
 			UI.Enviar("Sim_Sair")
-		end, { Size = UDim2.fromOffset(180, 42) })
+		end, { Size = UDim2.fromOffset(180, 42), LayoutOrder = 1 })
+		UI.Botao(m.Rodape, "Continuar", "primario", function() m.Fechar() end, { Size = UDim2.fromOffset(130, 42), LayoutOrder = 2 })
+		local fechar = m.Fechar
+		m.Fechar = function()
+			if aoFechar then aoFechar() end
+			fechar()
+		end
+		return m
 	end
-	UI.Registrar("Sim_Menu", function(p) task.spawn(abrirMenu, p) end)
+
+	-- o servidor manda a lista ao entrar, ao sair de uma licao e ao cancelar um briefing:
+	-- em todos os casos o piloto volta ao voo livre, sem menu
+	UI.Registrar("Sim_Menu", function(p)
+		listaLicoes = p
+		noSimulador = true
+		task.spawn(iniciarLivre)
+	end)
+
+	local DEF_LIVRE = {
+		Nome = "Voo livre",
+		Objetivos = {},
+		Inicio = function(P) return PV.Inicio(P) end,
+		Atualizar = function() end,
+	}
+
+	function iniciarLivre()
+		local p = listaLicoes
+		if not p then return end
+		if not aeronaveLivre then
+			for _, a in ipairs(aeronavesLiberadas(p)) do
+				if a.Liberada then aeronaveLivre = a.Id break end
+			end
+			aeronaveLivre = aeronaveLivre or "T25"
+		end
+		iniciarVoo({ Id = "LIVRE", Aeronave = aeronaveLivre, Nome = "Voo livre" }, DEF_LIVRE)
+	end
 
 	-- VOO --------------------------------------------------------------------------------
-	local function iniciarVoo(p)
+	function iniciarVoo(p, defLivre)
 		encerrarVoo()
 		local P = Aeronaves[p.Aeronave]
-		local def = LIC.Definicoes[p.Id]
+		local def = defLivre or LIC.Definicoes[p.Id]
 		if not P or not def then return end
+		local livre = defLivre ~= nil
 		local ini = def.Inicio(P)
 		local s = Fisica.Novo(P, ini)
-		s.Solo = solo
+		s.Solo = livre and function(xm, zm) local h, t = PV.Solo(xm, zm) return h, t end or solo
 		Fisica.Calcular(s)
 		if def.MotorDesligado then
 			s.MotorLigado = false
 			s.N = 0
 		end
 		local cen = CEN.Criar()
+		if livre then cen.Pista = PV.Criar(cen.Pasta) end
 		local cab = CAB.Criar(P, cen.Pasta)
 		for id in pairs(cab.Interruptores) do
 			if id ~= "Trem" and id ~= "Flape" then
@@ -118,7 +187,7 @@ function SIM.Iniciar(UI)
 		hud.Objetivos(def.Objetivos or {})
 		local piloto = Fisiologia.NovoPiloto(4.4)
 		piloto.Traje = (P.Tipo == "jato") and 1.0 or 0
-		local v = { P = P, Def = def, S = s, Cab = cab, Hud = hud, Cen = cen, Piloto = piloto, Id = p.Id, Nome = p.Nome,
+		local v = { P = P, Def = def, S = s, Cab = cab, Hud = hud, Cen = cen, Piloto = piloto, Id = p.Id, Nome = p.Nome, Livre = livre,
 			Fim = false, UltimaTele = 0, VelAnterior = s.V }
 		voo = v
 		local ctx = { Dados = {}, T = 0, Cen = cen, Interruptores = cab.Estados }
@@ -141,9 +210,15 @@ function SIM.Iniciar(UI)
 			elseif nome == "Dados" then
 				hud.AlternarDados()
 			elseif nome == "Menu" then
+				if v.Livre then
+					if v.Pausado then return end
+					v.Pausado = true
+					abrirMenu(listaLicoes or { Licoes = {}, Maquina = 1 }, function() v.Pausado = false end)
+					return
+				end
 				local m = UI.Modal({ Titulo = v.Nome or "Lição", Sobretitulo = "Simulador em pausa", Largura = 440, Altura = 300 })
 				v.Pausado = true
-				UI.Rotulo(m.Conteudo, "A simulação está congelada. Você pode continuar ou encerrar a lição sem nota.", 14, { TextColor3 = COR.Sub })
+				UI.Rotulo(m.Conteudo, "A simulação está congelada. Você pode continuar ou encerrar a lição sem nota e voltar ao voo livre.", 14, { TextColor3 = COR.Sub })
 				UI.Botao(m.Rodape, "Encerrar lição", "secundario", function()
 					m.Fechar()
 					encerrarVoo()
@@ -233,6 +308,13 @@ function SIM.Iniciar(UI)
 		function ctx.Concluir(nota, aprovado, linhas)
 			if v.Fim then return true end
 			v.Fim = true
+			if v.Livre then
+				hud.Mensagem("ACIDENTE: " .. tostring(s.Colisao), 3)
+				task.delay(3, function()
+					if voo == v then iniciarLivre() end
+				end)
+				return true
+			end
 			nota = math.clamp(nota or 0, 0, 10)
 			hud.Mensagem(s.Destruido and ("ACIDENTE: " .. tostring(s.Colisao)) or "Lição concluída", 3)
 			task.delay(s.Destruido and 3 or 2.5, function()
@@ -307,6 +389,7 @@ function SIM.Iniciar(UI)
 					Est = s.Destruido and "ACIDENTE" or (s.EmSolo and "SOLO" or "EM VOO"),
 					Tmp = string.format("%d:%02d", math.floor(ctx.T / 60), math.floor(ctx.T % 60)),
 					Ax = ax, Tremor = amp * 40,
+					X = s.px, Y = s.py, Z = s.pz, AnvId = P2.Id, Virt = v.Livre == true,
 				})
 			end
 		end)
