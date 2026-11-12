@@ -318,7 +318,7 @@ def construir(spec):
 
 
 T25 = {
-    "id": "T25", "cor": BRANCO,
+    "id": "T25", "cor": (196, 199, 194),
     "olho": (-0.34, 0.78, -0.35), "cab_larg": 1.22, "cab_z": (-1.15, 0.95), "prof_cabine": 1.0,
     "assentos": [(-0.34, 0.0), (0.34, 0.0)], "larg_painel": 1.1,
     "canopi_z": -0.15, "canopi_comp": 2.3, "canopi_alt": 0.62, "arcos": [-0.95, 0.75],
@@ -334,7 +334,7 @@ T25 = {
         {"z": 3.7, "larg": 0.52, "alt": 0.62, "cy": 0.06, "n": 2.5},
         {"z": 4.85, "larg": 0.18, "alt": 0.3, "cy": 0.15, "n": 2.3},
     ],
-    "faixas": [], "cor_asa": (232, 102, 26), "cor_spinner": (226, 78, 22),
+    "faixas": [], "cor_asa": (128, 134, 124), "cor_spinner": (52, 54, 56),
     "asa": {"raiz_x": 0.5, "semi": 5.5, "corda_raiz": 1.95, "corda_ponta": 1.25, "z_ba": -0.78, "enfle": 2.5, "y": -0.6, "diedro": 5,
             "esp_raiz": 0.15, "esp_ponta": 0.12, "torcao": 2, "curv": 0.02},
     "cocar_asa": (4.4, -0.35, 0.8),
