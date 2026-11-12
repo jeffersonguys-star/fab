@@ -34,9 +34,9 @@ function CEN.Criar()
 		p.CanTouch = false
 		p.CastShadow = false
 		p.Size = Vector3.new(BLOCO, 1, BLOCO)
-		p.Color = Color3.fromRGB(22, 64, 88)
+		p.Color = Color3.fromRGB(40, 118, 162)
 		p.Material = Enum.Material.SmoothPlastic
-		p.Reflectance = 0.15
+		p.Reflectance = 0.04
 		p.Transparency = 1
 		p.Parent = pasta
 		tiles[i] = p

@@ -39,76 +39,35 @@ function CORPO.Criar(P, pasta)
 	local lay = LAYOUT[P.Id]
 	if not lay or not lay.Manche or not lay.Manete then obj.Erro = "layout sem manche/manete" return nil, obj.Erro end
 	-- corpo R15: bracos redondos com a camisa e as mangas do proprio avatar (nada de bloco R6)
-	local ok, clone
-	-- sempre monta um R15 novo com a aparencia do jogador (camisa, mangas, cores), com os bracos padrao
-	ok, clone = pcall(function()
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		local desc = hum and hum:GetAppliedDescription() or Players:GetHumanoidDescriptionFromUserId(jogador.UserId)
-		desc = desc:Clone()
-		desc.LeftArm, desc.RightArm = 0, 0
-		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
-	end)
-	if not ok or not clone then return nil, "nao foi possivel montar o corpo R15: " .. tostring(clone) end
+	-- bracos de piloto montados do zero (macacao verde-oliva e luvas): nao dependem do avatar do jogador
+	local clone = Instance.new("Model")
 	clone.Name = "CorpoPiloto"
-	for _, d in ipairs(clone:GetDescendants()) do
-		if d:IsA("Script") or d:IsA("LocalScript") then d:Destroy() end
-	end
-	local hum = clone:FindFirstChildOfClass("Humanoid")
-	if hum then
-		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-		hum.PlatformStand = true
-	end
-	local function peca(nome) return clone:FindFirstChild(nome) end
-	local cabeca = peca("Head")
-	local pedacos = {
-		E = { peca("LeftUpperArm"), peca("LeftLowerArm"), peca("LeftHand") },
-		D = { peca("RightUpperArm"), peca("RightLowerArm"), peca("RightHand") },
-	}
-	if not (cabeca and pedacos.E[3] and pedacos.D[3] and pedacos.E[1] and pedacos.D[1] and pedacos.E[2] and pedacos.D[2]) then
-		clone:Destroy() return nil, "corpo sem as pecas R15"
-	end
-	local visiveis = {}
-	for _, lado in pairs(pedacos) do for _, q in ipairs(lado) do visiveis[q] = true end end
-	for _, d in ipairs(clone:GetDescendants()) do
-		if d:IsA("BasePart") then
-			d.Anchored = true
-			d.CanCollide = false
-			d.CanQuery = false
-			d.CanTouch = false
-			if visiveis[d] then
-				d.Material = Enum.Material.SmoothPlastic
-				d.Reflectance = 0
-				d.Transparency = 0
-				for _, f in ipairs(d:GetChildren()) do
-					if f:IsA("SurfaceAppearance") then f:Destroy() end
-				end
-			else
-				d.Transparency = 1
-				for _, f in ipairs(d:GetChildren()) do
-					if f:IsA("Decal") or f:IsA("Texture") then f.Transparency = 1 end
-				end
-			end
-		elseif d:IsA("Motor6D") or d:IsA("Weld") then
-			d.Enabled = false
-		end
-	end
-	local raizHum = peca("HumanoidRootPart")
-	if raizHum then raizHum.Transparency = 1 end
-	pcall(function() clone:ScaleTo(ESCALA) end)
 	local k = ESCALA
-	local tams = {}
-	-- medidas de braco de piloto em studs (ja na escala da cabine): braco fino, mao pequena
-	local LARG_SUP, LARG_INF, MAO = 0.30 * k, 0.26 * k, Vector3.new(0.30 * k, 0.34 * k, 0.24 * k)
-	for lado, q in pairs(pedacos) do
-		q[3].Size = MAO
-		tams[lado] = { q[1].Size.Y, q[2].Size.Y, MAO.Y, Vector3.new(LARG_SUP, 0, LARG_SUP), Vector3.new(LARG_INF, 0, LARG_INF) }
+	local COR_MANGA, COR_LUVA = Color3.fromRGB(74, 84, 62), Color3.fromRGB(44, 44, 46)
+	local function nova(nome, forma, cor, mat)
+		local q = Instance.new("Part")
+		q.Name = nome
+		q.Shape = forma
+		q.Anchored = true
+		q.CanCollide, q.CanQuery, q.CanTouch, q.CastShadow = false, false, false, false
+		q.Color = cor
+		q.Material = mat
+		q.TopSurface, q.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+		q.Parent = clone
+		return q
 	end
-	for _, d in ipairs(clone:GetChildren()) do
-		if d:IsA("Accessory") then
-			local h = d:FindFirstChild("Handle")
-			if h then h.Transparency = 1 end
-		end
+	local pedacos = {}
+	for _, lado in ipairs({ "E", "D" }) do
+		pedacos[lado] = {
+			nova("Braco" .. lado, Enum.PartType.Cylinder, COR_MANGA, Enum.Material.Fabric),
+			nova("Antebraco" .. lado, Enum.PartType.Cylinder, COR_MANGA, Enum.Material.Fabric),
+			nova("Mao" .. lado, Enum.PartType.Ball, COR_LUVA, Enum.Material.Leather),
+			nova("Cotovelo" .. lado, Enum.PartType.Ball, COR_MANGA, Enum.Material.Fabric),
+		}
 	end
+	-- medidas reais (metros) convertidas para studs da cabine
+	local L_SUP, L_INF, L_MAO = 0.30 * E, 0.27 * E, 0.19 * E
+	local D_SUP, D_INF, D_MAO = 0.105 * E, 0.085 * E, 0.09 * E
 	clone.Parent = pasta
 
 	-- geometria da cabine (em studs, referencial da aeronave) ---------------------------------
@@ -125,7 +84,7 @@ function CORPO.Criar(P, pasta)
 	local cfTorso = cfTroncoCom(0, 0)
 	local cfTronco0 = cfTorso
 	local function noTorso(x, y, z) return cfTorso * Vector3.new(x * k, y * k, z * k) end
-	local ombroE, ombroD = noTorso(-1, 0.5, 0), noTorso(1, 0.5, 0)
+	local ombroE, ombroD = noTorso(-0.65, 0.5, 0), noTorso(0.65, 0.5, 0)
 	obj.Desloc = Vector3.zero
 	obj.Giro = CFrame.new()
 
@@ -170,35 +129,39 @@ function CORPO.Criar(P, pasta)
 
 	-- braco de duas articulacoes (ombro, cotovelo, punho) que termina com a mao no alvo ---------
 	local function braco(lado, ombro, alvo)
-		local sup, inf, mao = pedacos[lado][1], pedacos[lado][2], pedacos[lado][3]
-		local T = tams[lado]
-		local dist = (alvo - ombro).Magnitude
-		local f = math.clamp(dist / ((T[1] + T[2] + T[3] * 0.5) * 0.97), 1, 1.35)
-		local L1, L2, LM = T[1] * f, T[2] * f, T[3]
-		sup.Size = Vector3.new(T[4].X, L1, T[4].Z)
-		inf.Size = Vector3.new(T[5].X, L2, T[5].Z)
+		local sup, inf, mao, cot = pedacos[lado][1], pedacos[lado][2], pedacos[lado][3], pedacos[lado][4]
 		local sinal = (lado == "E") and -1 or 1
 		local v = alvo - ombro
 		local d = v.Magnitude
 		if d < 0.05 then return end
 		local dir = v.Unit
-		-- punho = alvo recuado meia mao; se estiver alem do alcance, a mao fica na ponta do braco
-		local punho = alvo - dir * (LM * 0.5)
+		-- punho = alvo recuado meia mao; alem do alcance, a mao fica na ponta do braco
+		local punho = alvo - dir * (L_MAO * 0.5)
 		local dp = (punho - ombro).Magnitude
-		local alcance = (L1 + L2) * 0.995
+		local alcance = (L_SUP + L_INF) * 0.995
 		if dp > alcance then dp = alcance end
 		local dirP = (punho - ombro).Unit
 		punho = ombro + dirP * dp
-		local a = (L1 * L1 - L2 * L2 + dp * dp) / (2 * dp)
-		local h = math.sqrt(math.max(L1 * L1 - a * a, 0))
+		local a = (L_SUP * L_SUP - L_INF * L_INF + dp * dp) / (2 * dp)
+		local h = math.sqrt(math.max(L_SUP * L_SUP - a * a, 0))
+		-- cotovelo para baixo e um pouco para tras (nunca para fora, onde ficam as paredes do cockpit)
 		local pole = Vector3.new(sinal * 0.1, -1, 0.6)
 		local perp = pole - dirP * pole:Dot(dirP)
 		perp = (perp.Magnitude > 1e-3) and perp.Unit or Vector3.yAxis
 		local cotovelo = ombro + dirP * a + perp * h
-		sup.CFrame = cfRaiz * orientar((ombro + cotovelo) / 2, cotovelo - ombro)
-		inf.CFrame = cfRaiz * orientar((cotovelo + punho) / 2, punho - cotovelo)
+		local gira = CFrame.Angles(0, 0, math.rad(90)) -- o cilindro tem o eixo em X
+		local function seg(parte, p1, p2, diam)
+			local c = (p2 - p1)
+			parte.Size = Vector3.new(c.Magnitude, diam, diam)
+			parte.CFrame = cfRaiz * orientar((p1 + p2) / 2, c) * gira
+		end
+		seg(sup, ombro, cotovelo, D_SUP)
+		seg(inf, cotovelo, punho, D_INF)
+		cot.Size = Vector3.new(D_SUP * 1.02, D_SUP * 1.02, D_SUP * 1.02)
+		cot.CFrame = cfRaiz * CFrame.new(cotovelo)
 		local dirM = (punho - cotovelo).Unit
-		mao.CFrame = cfRaiz * orientar(punho + dirM * (LM * 0.5), dirM)
+		mao.Size = Vector3.new(D_MAO, L_MAO, D_MAO * 0.8)
+		mao.CFrame = cfRaiz * orientar(punho + dirM * (L_MAO * 0.5), dirM)
 	end
 
 	function obj.Alcancar(nome, cab)
@@ -246,14 +209,13 @@ function CORPO.Criar(P, pasta)
 		inclinacao = inclinacao + (alvoInc - inclinacao) * a
 		inclinaLado = inclinaLado + (alvoLado - inclinaLado) * a
 		cfTorso = cfTroncoCom(inclinacao, inclinaLado)
-		ombroE, ombroD = noTorso(-1, 0.5, 0), noTorso(1, 0.5, 0)
+		ombroE, ombroD = noTorso(-0.65, 0.5, 0), noTorso(0.65, 0.5, 0)
 		-- a camera acompanha a cabeca (posicao inteira, giro pela metade)
 		local cabecaPos = cfTorso * Vector3.new(0, 1.5 * k, 0)
 		local cabecaRepouso = cfTronco0 * Vector3.new(0, 1.5 * k, 0)
 		obj.Desloc = cabecaPos - cabecaRepouso
 		obj.Giro = CFrame.Angles(math.rad(-28 * inclinacao * 0.5), 0, math.rad(inclinaLado * 20 * inclinacao * 0.5))
 
-		cabeca.CFrame = cf * (cfTorso * CFrame.new(0, 1.5 * k, 0))
 		if mancheDireita then
 			braco("E", ombroE, posEsq)
 			braco("D", ombroD, alvoD)

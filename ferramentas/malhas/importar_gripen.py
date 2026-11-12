@@ -314,7 +314,7 @@ def trem_gripen(cena, V=None, I=None):
     cx, cz = -0.0, -4.3
     yb = ybaixo(cx, cz) - 0.008
     cena.adicionar("TremPortaNariz", caixa(0.36, 0.02, 0.7, 0.004).mover(cx, yb, cz), COR_P, "SmoothPlastic", rug=0.6)
-    art["TremPortaNariz"] = {"Pivo": [-0.18, yb, cz], "Eixo": [0, 0, 1], "Ang": 85, "Porta": True}
+    art["TremPortaNariz"] = {"Pivo": [-0.18, yb, cz], "Eixo": [0, 0, 1], "Ang": -85, "Porta": True}
     return art
 
 
@@ -351,7 +351,7 @@ def cabine_sim():
     cena.adicionar("Manche", haste, (74, 76, 80), "SmoothPlastic", rug=0.5)
     cena.adicionar("MancheBotoes", botoes, (120, 122, 126), "SmoothPlastic", rug=0.5)
     lay["Manche"] = {"Pivo": [bx, by, bz]}
-    mx, my, mz = -0.36, 0.69, -3.65
+    mx, my, mz = -0.28, 0.67, -3.5
     cena.adicionar("Manete", cabines.manete(mx, my + 0.02, mz), (112, 114, 120), "SmoothPlastic", rug=0.6)
     lay["Manete"] = {"Pivo": [mx, my + 0.02, mz]}
     from malha import caixa
@@ -368,7 +368,7 @@ def cabine_sim():
     lay["Mostradores"] = []
     lay["Luzes"] = []
     lay["HUD"] = {"P": [0, 0.887, -4.505], "R": [28, 0, 0], "Tam": [0.24, 0.19]}
-    lay["Flape"] = {"P": [-0.30, 0.78, -3.35], "R": [0, 0, 0]}
+    lay["Flape"] = {"P": [-0.31, 0.80, -3.68], "R": [0, 0, 0]}
     lay["Trem"] = {"P": [-0.36, 0.56, -4.57], "R": [inc, 0, 0]}
     from malha import tubo
     punho = tubo([[-0.08, 0.24, -3.86], [-0.08, 0.34, -3.9], [0.08, 0.34, -3.9], [0.08, 0.24, -3.86]], 0.014, 8)

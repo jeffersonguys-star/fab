@@ -119,7 +119,7 @@ return {
 			R = { 0, 0, 0 }
 		},
 		Flape = {
-			P = { -0.3, 0.78, -3.35 },
+			P = { -0.31, 0.8, -3.68 },
 			R = { 0, 0, 0 }
 		},
 		HUD = {
@@ -164,7 +164,7 @@ return {
 			Pivo = { 0, 0.08, -4.08 }
 		},
 		Manete = {
-			Pivo = { -0.36, 0.71, -3.65 }
+			Pivo = { -0.28, 0.69, -3.5 }
 		},
 		Mostradores = {  },
 		Olho = { 0, 1, -3.6 },
@@ -215,7 +215,7 @@ return {
 				Porta = true
 			},
 			TremPortaNariz = {
-				Ang = 85,
+				Ang = -85,
 				Eixo = { 0, 0, 1 },
 				Pivo = { -0.18, -0.3072, -4.3 },
 				Porta = true
