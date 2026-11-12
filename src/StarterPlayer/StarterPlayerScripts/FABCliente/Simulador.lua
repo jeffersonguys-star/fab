@@ -198,6 +198,19 @@ function SIM.Iniciar(UI)
 			t.TextColor3 = Color3.new(1, 1, 1)
 			t.Text = "CARREGANDO A CABINE..."
 			t.Parent = f
+			if P.Id == "F39" then
+				local cr = Instance.new("TextLabel")
+				cr.AnchorPoint = Vector2.new(0.5, 1)
+				cr.Position = UDim2.fromScale(0.5, 0.97)
+				cr.Size = UDim2.fromScale(0.9, 0.06)
+				cr.BackgroundTransparency = 1
+				cr.Font = Enum.Font.Gotham
+				cr.TextSize = 12
+				cr.TextWrapped = true
+				cr.TextColor3 = Color3.fromRGB(170, 170, 170)
+				cr.Text = "Modelo 3D do Gripen: \"SAAB Jas 39A Gripen (Detailed Cockpit)\" por ngkoret, licenca CC-BY-4.0 (sketchfab.com/ngkoret), adaptado."
+				cr.Parent = f
+			end
 			telaCar.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 		end
 		local okCab, cab = pcall(CAB.Criar, P, cen.Pasta)

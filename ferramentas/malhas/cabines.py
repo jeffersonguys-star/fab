@@ -318,6 +318,9 @@ CONF = {
 
 
 def construir(spec):
+    if spec["id"] == "F39":
+        import importar_gripen
+        return importar_gripen.cabine_sim()
     rng = random.Random(hash(spec["id"]) % 1000)
     pid = spec["id"]
     conf = CONF[pid]
