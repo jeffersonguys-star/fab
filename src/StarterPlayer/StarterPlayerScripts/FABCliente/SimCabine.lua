@@ -111,12 +111,18 @@ function CAB.Criar(P, pastaPai)
 	-- MALHA ---------------------------------------------------------------------------------
 	local pastaMalhas = ReplicatedStorage:FindFirstChild("FABMalhas")
 	local malha = pastaMalhas and pastaMalhas:FindFirstChild("Sim_" .. P.Id)
+	obj.Diag = malha and "malha ja estava no cliente" or "malha ausente, pedindo ao servidor"
 	if not malha and pastaMalhas then
 		local ped = ReplicatedStorage:FindFirstChild("FABPedirCabine")
 		if ped then
 			ped:FireServer(P.Id)
 			malha = pastaMalhas:WaitForChild("Sim_" .. P.Id, 30)
+			obj.Diag = malha and "malha recebida do servidor" or "servidor NAO enviou a malha em 30 s"
+		else
+			obj.Diag = "FABPedirCabine inexistente"
 		end
+	elseif not pastaMalhas then
+		obj.Diag = "pasta FABMalhas inexistente"
 	end
 	if malha then
 		-- espera as malhas terminarem de baixar para a cabine nao aparecer pela metade
@@ -124,6 +130,7 @@ function CAB.Criar(P, pastaPai)
 	end
 	obj.Animadas = {}
 	obj.Trem = {}
+	local nPartes = 0
 	if malha then
 		for _, d in ipairs(malha:GetDescendants()) do
 			if d:IsA("BasePart") then
@@ -139,6 +146,7 @@ function CAB.Criar(P, pastaPai)
 				-- sombras so nas pecas grandes da cabine (evita custo excessivo)
 				c.CastShadow = c.Transparency < 0.5 and (c.Size.Magnitude > 2)
 				c.Parent = modelo
+				nPartes = nPartes + 1
 				if c.Name == "Manche" or c.Name == "MancheBotoes" or c.Name == "Manete" or c.Name == "Helice" then
 					table.insert(obj.Animadas, c)
 				elseif c.Name == "Trem" or c.Name == "TremPneus" then
@@ -146,10 +154,17 @@ function CAB.Criar(P, pastaPai)
 				end
 			end
 		end
+		if nPartes == 0 then
+			obj.Diag = "malha vazia (0 pecas)"
+			construirSimples(modelo, P, lay)
+		else
+			obj.Diag = "malha OK: " .. nPartes .. " pecas"
+		end
 	else
 		construirSimples(modelo, P, lay)
 	end
 
+	warn("[FAB] Cabine " .. tostring(P.Id) .. ": " .. tostring(obj.Diag))
 	-- TELAS ----------------------------------------------------------------------------------
 	for _, t in ipairs(lay.Telas) do
 		local w, h = t.Tam[1], t.Tam[2]

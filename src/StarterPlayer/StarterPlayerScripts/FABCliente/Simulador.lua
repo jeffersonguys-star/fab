@@ -212,6 +212,7 @@ function SIM.Iniciar(UI)
 		if not okC then warn("[FAB] Corpo do piloto: " .. tostring(corpo)) corpo = nil end
 		local hud = HUD.Criar(UI, P)
 		hud.Objetivos(def.Objetivos or {})
+		if cab.Diag and not string.find(cab.Diag, "OK", 1, true) then hud.Mensagem("Cabine simplificada: " .. cab.Diag, 10) end
 		if livre then hud.Mensagem("Freio de estacionamento aplicado. Solte o interruptor FREIO EST para taxiar.", 6) end
 		local piloto = Fisiologia.NovoPiloto(4.4)
 		piloto.Traje = (P.Tipo == "jato") and 1.0 or 0
