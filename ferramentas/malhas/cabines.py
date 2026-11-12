@@ -594,6 +594,17 @@ def construir(spec):
         "arco": ("ArcosCanopi", (40, 42, 45), "SmoothPlastic", 0.4, 0.6),
         "borracha": ("Acolchoados", (46, 48, 52), "Fabric", 0.0, 0.9),
     }
+    if pid == "T25":
+        claro = {
+            "placa": ((70, 72, 74), "SmoothPlastic"), "painel": ((196, 198, 194), "SmoothPlastic"),
+            "moldura": ((34, 36, 38), "SmoothPlastic"), "console": ((168, 172, 170), "SmoothPlastic"),
+            "estrutura": ((184, 188, 184), "SmoothPlastic"), "assento_tecido": ((104, 118, 84), "Fabric"),
+            "assento_costura": ((84, 98, 68), "Fabric"), "assento_estr": ((150, 154, 150), "SmoothPlastic"),
+            "cinto": ((96, 108, 78), "Fabric"), "legenda": ((236, 236, 228), "SmoothPlastic"),
+        }
+        for chave, (cor2, mat2) in claro.items():
+            n0, _, _, me, ru = materiais[chave]
+            materiais[chave] = (n0, cor2, mat2, me, ru)
     for chave, (nome, cor, mat, metal, rug) in materiais.items():
         m = G[chave].malha()
         if len(m.f) == 0:

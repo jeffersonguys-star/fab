@@ -25,6 +25,7 @@ function SIM.Iniciar(UI)
 	local Fisiologia = require(FAB:WaitForChild("Fisiologia"))
 	local pasta = script.Parent
 	local CAB = require(pasta:WaitForChild("SimCabine"))
+	local CORPO = require(pasta:WaitForChild("SimCorpo"))
 	local CTRL = require(pasta:WaitForChild("SimControles"))
 	local HUD = require(pasta:WaitForChild("SimHUD"))
 	local CEN = require(pasta:WaitForChild("SimCenario"))
@@ -53,6 +54,7 @@ function SIM.Iniciar(UI)
 		RunService:UnbindFromRenderStep("FABSimulador")
 		pcall(function() v.Ctrl.Destruir() end)
 		pcall(function() v.Hud.Destruir() end)
+		pcall(function() if v.Corpo then v.Corpo.Destruir() end end)
 		pcall(function() v.Cab.Destruir() end)
 		pcall(function() v.Cen.Destruir() end)
 		if v.Navegacao then v.Navegacao:Destroy() end
@@ -183,11 +185,13 @@ function SIM.Iniciar(UI)
 				cab.DefinirInterruptor(id, ligado)
 			end
 		end
+		local okC, corpo = pcall(CORPO.Criar, P, cen.Pasta)
+		if not okC then warn("[FAB] Corpo do piloto: " .. tostring(corpo)) corpo = nil end
 		local hud = HUD.Criar(UI, P)
 		hud.Objetivos(def.Objetivos or {})
 		local piloto = Fisiologia.NovoPiloto(4.4)
 		piloto.Traje = (P.Tipo == "jato") and 1.0 or 0
-		local v = { P = P, Def = def, S = s, Cab = cab, Hud = hud, Cen = cen, Piloto = piloto, Id = p.Id, Nome = p.Nome, Livre = livre,
+		local v = { P = P, Def = def, S = s, Cab = cab, Corpo = corpo, Hud = hud, Cen = cen, Piloto = piloto, Id = p.Id, Nome = p.Nome, Livre = livre,
 			Fim = false, UltimaTele = 0, VelAnterior = s.V }
 		voo = v
 		local ctx = { Dados = {}, T = 0, Cen = cen, Interruptores = cab.Estados }
@@ -198,6 +202,9 @@ function SIM.Iniciar(UI)
 		local function acao(nome)
 			if not voo or v.Fim then return end
 			local e = ctrl.Entradas
+			if corpo and (nome == "Trem" or nome == "Flape" or nome == "AeroFreio" or nome == "Motor") then
+				pcall(corpo.Alcancar, nome, cab)
+			end
 			if nome == "Trem" and P.TremRetratil then
 				if s.EmSolo and e.Trem then hud.Mensagem("Trem travado: a aeronave está no solo") return end
 				e.Trem = not e.Trem
@@ -295,7 +302,10 @@ function SIM.Iniciar(UI)
 			if not voo or v.Pausado then return end
 			local raio = camera:ViewportPointToRay(pos.X, pos.Y)
 			local r = workspace:Raycast(raio.Origin, raio.Direction * 25, params)
-			if r and r.Instance:GetAttribute("Interruptor") then interruptor(r.Instance:GetAttribute("Interruptor")) end
+			if r and r.Instance:GetAttribute("Interruptor") then
+				if corpo then pcall(corpo.Apertar, r.Position, cab) end
+				interruptor(r.Instance:GetAttribute("Interruptor"))
+			end
 		end
 
 		ctrl = CTRL.Criar(UI, P, { Manete = ini.Manete or 0, Flap = ini.Flap or 0, Trem = (ini.Trem or 1) > 0.5, AoAcao = acao, AoToque = toque })
@@ -396,6 +406,7 @@ function SIM.Iniciar(UI)
 				* CFrame.Angles(0, math.rad(ctrl.OlharYaw), 0) * CFrame.Angles(math.rad(ctrl.OlharPitch), 0, 0) * cabeca * tremor
 			camera.CFrame = olho
 			cab.Atualizar(cf, s, e, dt)
+			if corpo then pcall(corpo.Atualizar, cf, e, dt) end
 			cen.Atualizar(olho.Position)
 			local olhando = math.abs(ctrl.OlharYaw) > 20 or math.abs(ctrl.OlharPitch) > 15
 			hud.Atualizar(s, camera, cf, olhando, { Estado = ctx.EstadoTxt }, dt)
