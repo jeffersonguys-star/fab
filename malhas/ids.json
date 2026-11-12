@@ -1,1 +1,70 @@
-{}
+{
+  "Abrigo_HAS": {
+    "assetId": "110419912812831",
+    "hash": "49c0239eeaa37d8a92a37b066456cd8a27c057840256ef6a3be69ae2fa64868f"
+  },
+  "Aeronave_A29": {
+    "assetId": "74963270219687",
+    "hash": "b8ed2cf4b49e33ca07d6f11d077deb5c6a5f589e8b59f57b0e46b1de0b967a7d"
+  },
+  "Aeronave_F39": {
+    "assetId": "82118869028570",
+    "hash": "aea7aff5849ef4f77b06da4cf63900975591b9858d86dc6bb523e0dcef4b1f5c"
+  },
+  "Aeronave_F5": {
+    "assetId": "106773324454495",
+    "hash": "1915a5e7b1dfb92eda953e829d2ad4bd0dbc62ab27df558fd399ead3cf7a182f"
+  },
+  "Aeronave_T25": {
+    "assetId": "96613800948754",
+    "hash": "42fb67933cb11cfc21d155acec9591ac2b8352f2962d8aaca4e9df936238eba9"
+  },
+  "Aeronave_T27": {
+    "assetId": "111002523049032",
+    "hash": "a3d286732999afa9f0c48649bc852d824cf286ac19b5c7a1ab844f7aae9b7e49"
+  },
+  "Arvore_Frondosa": {
+    "assetId": "98499733416639",
+    "hash": "0a6bd3caf0435425b10179916f3b691df15747a372821c6bab138bc7a08ec5e4"
+  },
+  "Arvore_Frondosa2": {
+    "assetId": "127117081214396",
+    "hash": "ddc7b655c0c1c41c67b41c6e8caa5e512415edd13a0854753962c86c2b10a173"
+  },
+  "Arvore_Palmeira": {
+    "assetId": "133413036125864",
+    "hash": "578baec68682d2a1e39d7970eb561336f6643da478d93a6896936d197e58c82b"
+  },
+  "CentroSimulacao_Telhado": {
+    "assetId": "107313135467184",
+    "hash": "e5b29c25c2d0e09a82e6888b611d192f8c33427713b34b8a7133d1b76a435317"
+  },
+  "Hangar_Telhado": {
+    "assetId": "102854985422910",
+    "hash": "6fd0c8881d1f58db7e6b074d063d93c341f3795e2092180961effa8d8d634c66"
+  },
+  "Sim_A29": {
+    "assetId": "121528888905118",
+    "hash": "a71177a599c0b4a46638fa9f914b768b26725ec6174d0e44ea124f1e6217f134"
+  },
+  "Sim_F39": {
+    "assetId": "95370402992687",
+    "hash": "044cf8b58b7bdeb04e37bd4486038fdee529a0eb34e269242d7976628c1ff28f"
+  },
+  "Sim_F5": {
+    "assetId": "121002053749728",
+    "hash": "8e563b0507716a67760b787b8bea3b08c506178a17a5def12649f91479ee8991"
+  },
+  "Sim_T25": {
+    "assetId": "87571217747724",
+    "hash": "e1de126b2389db2556ec38f32a62062cd52e74bc4c636e2ea89696416b5a69e2"
+  },
+  "Sim_T27": {
+    "assetId": "85629188789592",
+    "hash": "aa81fd80d7dde66c4c73de252ceca5e05b4b99f2c92c286227ed4120565ec326"
+  },
+  "Simulador_Capsula": {
+    "assetId": "83769589869547",
+    "hash": "0535b7d435c9c8f18093d8d0f40f8313c4a5ab003d3d4c45033fcf68db1c7855"
+  }
+}

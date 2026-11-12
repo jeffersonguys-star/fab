@@ -1,3 +1,20 @@
 -- Gerado por automacao/enviar_malhas.py. Nao edite a mao.
 return {
+	Abrigo_HAS = 110419912812831,
+	Aeronave_A29 = 74963270219687,
+	Aeronave_F39 = 82118869028570,
+	Aeronave_F5 = 106773324454495,
+	Aeronave_T25 = 96613800948754,
+	Aeronave_T27 = 111002523049032,
+	Arvore_Frondosa = 98499733416639,
+	Arvore_Frondosa2 = 127117081214396,
+	Arvore_Palmeira = 133413036125864,
+	CentroSimulacao_Telhado = 107313135467184,
+	Hangar_Telhado = 102854985422910,
+	Sim_A29 = 121528888905118,
+	Sim_F39 = 95370402992687,
+	Sim_F5 = 121002053749728,
+	Sim_T25 = 87571217747724,
+	Sim_T27 = 85629188789592,
+	Simulador_Capsula = 83769589869547,
 }
