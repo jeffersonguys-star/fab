@@ -488,7 +488,14 @@ function SIM.Iniciar(UI)
 			end
 			camera.CFrame = olho
 			cab.Atualizar(cf, s, e, dt)
-			if corpo then pcall(corpo.Atualizar, cf, e, dt) end
+			if corpo then
+				local okCorpo, erroCorpo2 = pcall(corpo.Atualizar, cf, e, dt)
+				if not okCorpo and not v.ErroCorpoAvisado then
+					v.ErroCorpoAvisado = true
+					warn("[FAB] Corpo: " .. tostring(erroCorpo2))
+					hud.Mensagem("Erro no corpo: " .. tostring(erroCorpo2), 10)
+				end
+			end
 			cen.Atualizar(olho.Position)
 			local olhando = math.abs(ctrl.OlharYaw) > 20 or math.abs(ctrl.OlharPitch) > 15
 			hud.Atualizar(s, camera, cf, olhando, { Estado = ctx.EstadoTxt }, dt)

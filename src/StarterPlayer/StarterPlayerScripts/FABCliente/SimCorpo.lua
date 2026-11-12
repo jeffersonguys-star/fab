@@ -40,15 +40,14 @@ function CORPO.Criar(P, pasta)
 	if not lay or not lay.Manche or not lay.Manete then obj.Erro = "layout sem manche/manete" return nil, obj.Erro end
 	-- corpo R15: bracos redondos com a camisa e as mangas do proprio avatar (nada de bloco R6)
 	local ok, clone
-	if char and char:FindFirstChild("LeftUpperArm") then
-		ok, clone = pcall(function() return char:Clone() end)
-	else
-		ok, clone = pcall(function()
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			local desc = hum and hum:GetAppliedDescription() or Players:GetHumanoidDescriptionFromUserId(jogador.UserId)
-			return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
-		end)
-	end
+	-- sempre monta um R15 novo com a aparencia do jogador (camisa, mangas, cores), com os bracos padrao
+	ok, clone = pcall(function()
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local desc = hum and hum:GetAppliedDescription() or Players:GetHumanoidDescriptionFromUserId(jogador.UserId)
+		desc = desc:Clone()
+		desc.LeftArm, desc.RightArm = 0, 0
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
 	if not ok or not clone then return nil, "nao foi possivel montar o corpo R15: " .. tostring(clone) end
 	clone.Name = "CorpoPiloto"
 	for _, d in ipairs(clone:GetDescendants()) do
@@ -135,7 +134,7 @@ function CORPO.Criar(P, pasta)
 	end
 	local function topoManete(e)
 		local m = math.clamp(e.Manete or 0, 0, 1)
-		return pManete + Vector3.new(0, 0.12 * E, -(m - 0.4) * 0.16 * E)
+		return pManete + Vector3.new(0, 0.12 * E, -(m - 0.4) * 0.26 * E)
 	end
 
 	-- alvos de alcance por nome de comando e por interruptor -----------------------------------

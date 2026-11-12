@@ -384,7 +384,7 @@ function CAB.Criar(P, pastaPai)
 				if (p.Name == "Manche" or p.Name == "MancheBotoes") and pManche then
 					w.C0 = CFrame.new(pManche) * CFrame.Angles(arf * math.rad(14), 0, -rol * math.rad(14)) * CFrame.new(-pManche) * c0
 				elseif p.Name == "Manete" and pManete then
-					w.C0 = CFrame.new(0, 0, -(m - 0.4) * 0.16 * E) * c0
+					w.C0 = CFrame.new(0, 0, -(m - 0.4) * 0.26 * E) * c0
 				elseif p.Name == "Helice" and pHelice then
 					w.C0 = CFrame.new(pHelice) * CFrame.Angles(0, 0, anguloHelice) * CFrame.new(-pHelice) * c0
 				end
