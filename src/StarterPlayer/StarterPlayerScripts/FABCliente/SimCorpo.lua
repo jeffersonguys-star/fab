@@ -17,7 +17,7 @@ local LAYOUT = require(FAB:WaitForChild("CabineLayout"))
 
 local CORPO = {}
 local E = MD.StudPorMetro
-local ESCALA = 1.3 -- o R6 tem 5 studs; a cabine esta em escala de 3,57 studs por metro
+local ESCALA = 1.15 -- o R6 tem 5 studs; a cabine esta em escala de 3,57 studs por metro
 
 local function suave(t)
 	t = math.clamp(t, 0, 1)
@@ -96,7 +96,7 @@ function CORPO.Criar(P, pasta)
 	local pManche = Vector3.new(lay.Manche.Pivo[1], lay.Manche.Pivo[2], lay.Manche.Pivo[3]) * E
 	local pManete = Vector3.new(lay.Manete.Pivo[1], lay.Manete.Pivo[2], lay.Manete.Pivo[3]) * E
 	-- o corpo gira em torno do quadril; "inclinacao" (0 a 1) inclina o tronco para alcancar longe
-	local quadril = Vector3.new(ox, oy - 2.5 * k, oz + 0.15 * k)
+	local quadril = Vector3.new(ox, oy - 2.5 * k, oz + 0.95 * k) -- corpo recuado: a cabeca fica no olho, o tronco atras dela
 	local inclinacao, inclinaLado = 0, 0
 	local function cfTroncoCom(inc, lado)
 		local rot = CFrame.Angles(math.rad(-9 - 28 * inc), 0, math.rad(lado * 20 * inc))
@@ -160,7 +160,7 @@ function CORPO.Criar(P, pasta)
 	end
 
 	local function perna(parte, quadril, lado)
-		local dir = Vector3.new(lado * 0.06, -0.45, -0.89).Unit
+		local dir = Vector3.new(lado * 0.05, -0.62, -0.78).Unit
 		local centro = quadril + dir * (1 * k)
 		parte.CFrame = cfRaiz * orientar(centro, dir)
 	end
