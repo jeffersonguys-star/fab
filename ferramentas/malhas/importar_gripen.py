@@ -252,6 +252,9 @@ def trem_gripen(cena, V=None, I=None):
     """Trem de pouso do Gripen: pernas com amortecedor, garfo, freio e rodas; cada perna e uma peca com pivo de recolhimento."""
     from malha import tubo, cilindro, revolucao, caixa
     CROMO, CINZA, PRETO_B = (176, 182, 188), (92, 96, 102), (20, 20, 22)
+    def ybaixo(x, z):
+        r = superficie_y(V, I, x, z) if V is not None else None
+        return (r[0] if r else -0.5)
 
     def pneu(r, w, x, yc, z):
         # pneu com ombros arredondados e tres sulcos de banda de rodagem
@@ -273,7 +276,8 @@ def trem_gripen(cena, V=None, I=None):
     ycN = -1.55 + rN
     pnA, arA = pneu(rN, wN, -0.1, ycN, zN)
     pnB, arB = pneu(rN, wN, 0.1, ycN, zN)
-    perna = cilindro(0.055, 0.7, 14, "y").mover(0, -0.85, zN) + cilindro(0.038, 0.5, 12, "y").mover(0, -1.18, zN)
+    ytn = ybaixo(0, zN) + 0.03
+    perna = cilindro(0.05, max(0.05, -0.5 - ytn), 12, "y").mover(0, (ytn - 0.5) / 2, zN) + cilindro(0.055, 0.7, 14, "y").mover(0, -0.85, zN) + cilindro(0.038, 0.5, 12, "y").mover(0, -1.18, zN)
     garfo = tubo([[-0.13, ycN, zN], [-0.13, ycN + 0.12, zN], [0, ycN + 0.17, zN]], 0.016, 8) + tubo([[0.13, ycN, zN], [0.13, ycN + 0.12, zN], [0, ycN + 0.17, zN]], 0.016, 8)
     elo = tubo([[0, -0.78, zN], [0, -0.92, zN - 0.16], [0, -1.1, zN - 0.02]], 0.013, 8)
     escora = tubo([[0, -0.62, zN], [0, -0.42, zN + 0.55]], 0.022, 8)
@@ -289,6 +293,9 @@ def trem_gripen(cena, V=None, I=None):
         x = lado * xM
         pn, ar = pneu(rM, wM, x, ycM, zM)
         amort = cilindro(0.07, 0.55, 16, "y").mover(x, -0.78, zM - 0.04) + cilindro(0.048, 0.5, 14, "y").mover(x, -1.1, zM - 0.05)
+        yt = ybaixo(x, zM - 0.04) + 0.03
+        if yt < -0.45:
+            amort = amort + cilindro(0.062, -0.45 - yt, 14, "y").mover(x, (yt - 0.45) / 2, zM - 0.04)
         eixo_ = cilindro(0.04, 0.34, 12, "x").mover(x, ycM, zM)
         disco = cilindro(0.2, 0.025, 20, "x").mover(x + lado * 0.1, ycM, zM)
         brace = tubo([[x, -0.72, zM - 0.04], [x - lado * 0.5, -0.5, zM + 0.35]], 0.026, 8)
@@ -298,9 +305,6 @@ def trem_gripen(cena, V=None, I=None):
         cena.adicionar("TremPrincipal%sPneus" % nome, pn, PRETO_B, "Rubber")
         art["TremPrincipal%s" % nome] = {"Pivo": [x * 0.96, -0.5, zM], "Eixo": [0, 0, 1], "Ang": ang}
     # portas dos compartimentos: ficam fechadas com o trem recolhido e abrem enquanto ele se move / esta baixado
-    def ybaixo(x, z):
-        r = superficie_y(V, I, x, z) if V is not None else None
-        return (r[0] if r else -0.5)
     COR_P = (122, 128, 134)
     for lado, nome in ((-1, "E"), (1, "D")):
         cx, cz, larg, comp = lado * 1.12, 0.45, 0.56, 0.95
