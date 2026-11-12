@@ -445,4 +445,21 @@ function CAB.Criar(P, pastaPai)
 	return obj
 end
 
+-- Pre-carrega em segundo plano as cabines de todas as aeronaves (pede ao servidor e baixa as malhas)
+-- para que entrar no simulador nao espere o download.
+function CAB.PreCarregar(ids)
+	task.spawn(function()
+		local pasta = ReplicatedStorage:WaitForChild("FABMalhas", 60)
+		local ped = ReplicatedStorage:WaitForChild("FABPedirCabine", 60)
+		if not (pasta and ped) then return end
+		for _, id in ipairs(ids) do
+			local nome = "Sim_" .. id
+			if not pasta:FindFirstChild(nome) then ped:FireServer(id) end
+			local m = pasta:WaitForChild(nome, 60)
+			if m then pcall(function() game:GetService("ContentProvider"):PreloadAsync(m:GetDescendants()) end) end
+			task.wait(0.5)
+		end
+	end)
+end
+
 return CAB

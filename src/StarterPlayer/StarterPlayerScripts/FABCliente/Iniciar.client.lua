@@ -14,3 +14,13 @@ for _, nome in ipairs({ "Carregamento", "OrdemUnida", "TACF", "Salto", "Sobreviv
 	end)
 	if not ok then warn("[FAB] Falha ao iniciar " .. nome .. ": " .. tostring(erro)) end
 end
+
+-- pre-carrega as cabines de todas as aeronaves enquanto o jogador ainda esta no patio
+task.delay(8, function()
+	local ok, erro = pcall(function()
+		local CAB = require(pasta:WaitForChild("SimCabine"))
+		local Aeronaves = require(ReplicatedStorage:WaitForChild("FAB"):WaitForChild("Aeronaves"))
+		CAB.PreCarregar(Aeronaves.Ordem)
+	end)
+	if not ok then warn("[FAB] Pre-carga das cabines: " .. tostring(erro)) end
+end)
