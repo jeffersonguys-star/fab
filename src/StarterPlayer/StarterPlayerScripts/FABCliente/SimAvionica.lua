@@ -67,8 +67,9 @@ local function contorno(f, cor, esp)
 end
 
 local function recorte(pai, p)
-	local ok, g = pcall(function() return Instance.new("CanvasGroup") end)
-	if not ok then g = Instance.new("Frame") g.ClipsDescendants = true end
+	-- Frame com recorte (CanvasGroup nao desenha direito dentro de SurfaceGui)
+	local g = Instance.new("Frame")
+	g.ClipsDescendants = true
 	g.BorderSizePixel = 0
 	for k, v in pairs(p or {}) do g[k] = v end
 	g.Parent = pai

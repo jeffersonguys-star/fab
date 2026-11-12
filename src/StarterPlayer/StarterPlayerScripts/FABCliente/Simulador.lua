@@ -194,6 +194,7 @@ function SIM.Iniciar(UI)
 		v.Ctx = ctx
 
 		local ctrl
+		local partidaMotor
 		local function acao(nome)
 			if not voo or v.Fim then return end
 			local e = ctrl.Entradas
@@ -207,6 +208,24 @@ function SIM.Iniciar(UI)
 				e.AeroFreio = not e.AeroFreio
 			elseif nome == "Respirar" then
 				Fisiologia.Respirar(piloto)
+			elseif nome == "Motor" then
+				local jatoM = P.Tipo == "jato"
+				if s.MotorLigado then
+					s.MotorLigado = false
+					for _, id in ipairs({ "Magnetos", "Ignicao", "Mistura", "Bomba" }) do
+						if cab.Interruptores[id] then cab.DefinirInterruptor(id, false) end
+					end
+					hud.Mensagem("Motor cortado", 1.5)
+				elseif not s.Partindo then
+					if s.Combustivel <= 0 then hud.Mensagem("Sem combustível") return end
+					for _, id in ipairs({ "Bateria", "Bomba", "Ignicao", "Mistura", "Magnetos" }) do
+						if cab.Interruptores[id] then cab.DefinirInterruptor(id, true) end
+					end
+					e.Manete = math.min(e.Manete, jatoM and 0.1 or 0.2)
+					if ctrl.DefinirManete then ctrl.DefinirManete(e.Manete) end
+					if cab.Interruptores.Partida then cab.DefinirInterruptor("Partida", true) end
+					partidaMotor()
+				end
 			elseif nome == "Dados" then
 				hud.AlternarDados()
 			elseif nome == "Menu" then
@@ -252,6 +271,8 @@ function SIM.Iniciar(UI)
 				end
 			end)
 		end
+
+		partidaMotor = partida
 
 		local function interruptor(id)
 			if v.Fim then return end

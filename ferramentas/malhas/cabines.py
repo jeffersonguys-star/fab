@@ -591,7 +591,7 @@ def construir(spec):
         "pedal": ("Pedais", METAL, "DiamondPlate", 0.6, 0.5),
         "hud": ("HUDEstrutura", (36, 38, 40), "Metal", 0.5, 0.5),
         "espelho": ("Espelhos", (200, 210, 215), "Foil", 1.0, 0.05),
-        "arco": ("ArcosCanopi", (40, 42, 45), "Metal", 0.4, 0.6),
+        "arco": ("ArcosCanopi", (40, 42, 45), "SmoothPlastic", 0.4, 0.6),
         "borracha": ("Acolchoados", (46, 48, 52), "Fabric", 0.0, 0.9),
     }
     for chave, (nome, cor, mat, metal, rug) in materiais.items():

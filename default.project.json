@@ -20,7 +20,10 @@
     "Workspace": {
       "$className": "Workspace",
       "$properties": {
-        "StreamingEnabled": false
+        "StreamingEnabled": true,
+        "StreamingMinRadius": 256,
+        "StreamingTargetRadius": 1600,
+        "StreamOutBehavior": "Opportunistic"
       }
     },
     "Lighting": {

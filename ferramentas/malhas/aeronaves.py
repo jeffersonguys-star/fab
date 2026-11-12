@@ -187,7 +187,7 @@ def construir(spec):
     ch = spec["canopi_alt"]
     dome = superelipsoide(cab_l + 0.05, ch * 2, cl, n=spec.get("canopi_n", 2.3), segs_u=40, segs_v=12, so_cima=True)
     dome = dome.filtrar_faces(lambda c: c[:, 1] > 0.005).mover(0, sill, cz_c)
-    cena.adicionar("Canopi", dome, VIDRO, "Glass", transparencia=0.82)
+    cena.adicionar("Canopi", dome, (150, 190, 205), "Glass", transparencia=0.55)
     # arcos do canopi (bordas e montantes)
     arcos = None
     for zr in spec.get("arcos", []):
