@@ -183,6 +183,7 @@ end
 if qual == "rolagem" or qual == "todos" then
 	rolagem("T25", 57, 1000, 0.6)
 	rolagem("T27", 100, 1000, 0.6)
+	rolagem("A29", 110, 1000, 0.7)
 	rolagem("F5", 180, 3000, 0.8)
 	rolagem("F39", 200, 3000, 0.8)
 end
