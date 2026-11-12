@@ -536,6 +536,18 @@ def construir(spec):
     G["preto"].add(caixa(0.012, 0.004, 0.22).mover(xt, yt + 0.021, zt))
     alav = manete(xt, yt + 0.02, zt)
     layout["Manete"] = {"Pivo": [xt, yt + 0.02, zt]}
+    manche2 = None
+    if pid == "T25":
+        # quadrante com tres alavancas (potencia, helice, mistura), botao amarelo e placas vermelhas, como no avião real
+        for dx in (-0.04, 0.04):
+            G["preto"].add(manete(xt + dx, yt + 0.02, zt + 0.01))
+        G["amarelo"].add(superelipsoide(0.03, 0.03, 0.04, 2.4, 10, 8).mover(xt + 0.04, yt + 0.175, zt))
+        G["vermelho"].add(caixa(0.1, 0.002, 0.07).girar("x", -22).mover(xt, topo_console + 0.056, oz - 0.46))
+        for ux in (-0.5, 0.5):
+            G["vermelho"].add(qp.malha(caixa(0.07, 0.026, 0.004).mover(ux, 0.2, 0.002)))
+        G["vermelho"].add(qp.malha(caixa(0.022, 0.022, 0.006).mover(0.0, -0.05, 0.003)))
+        # segundo manche (assento direito), fixo
+        manche2 = manche(0.34, base_m, zm)
     for s in (-1, 1):
         ped = Grupo()
         ped.add(caixa(0.1, 0.2, 0.025, 0.006).girar("x", 25))
@@ -563,12 +575,12 @@ def construir(spec):
             continue
         esc = (1 - abs(tt) ** 2.3) ** (1 / 2.3)
         pts = [[math.cos(math.pi * k / 16) * (cab_l + 0.05) / 2 * esc, sill + math.sin(math.pi * k / 16) * ch * esc, zr] for k in range(17)]
-        G["arco"].add(tubo(pts, 0.016, 8))
+        G["arco"].add(tubo(pts, 0.034 if pid == "T25" else 0.016, 10))
     def pw(c, e):
         return math.copysign(abs(c) ** e, c)
     borda = [[pw(math.cos(2 * math.pi * k / 48), 2 / 7) * (cab_l + 0.06) / 2, sill + 0.01, cz_c + pw(math.sin(2 * math.pi * k / 48), 2 / 7) * cl / 2] for k in range(49)]
-    G["arco"].add(tubo(borda, 0.016, 8, fechado=True))
-    if arcos:
+    G["arco"].add(tubo(borda, 0.034 if pid == "T25" else 0.016, 10, fechado=True))
+    if arcos and pid != "T25":
         za = arcos[0]
         tt = (za - cz_c) / (cl / 2)
         esc = (1 - abs(tt) ** 2.3) ** (1 / 2.3)
@@ -611,7 +623,7 @@ def construir(spec):
             "moldura": ((34, 36, 38), "SmoothPlastic"), "console": ((168, 172, 170), "SmoothPlastic"),
             "estrutura": ((184, 188, 184), "SmoothPlastic"), "assento_tecido": ((38, 40, 44), "Fabric"),
             "assento_costura": ((30, 32, 36), "Fabric"), "assento_estr": ((150, 154, 150), "SmoothPlastic"),
-            "cinto": ((78, 94, 124), "Fabric"), "legenda": ((236, 236, 228), "SmoothPlastic"),
+            "cinto": ((78, 94, 124), "Fabric"), "arco": ((200, 202, 198), "SmoothPlastic"), "legenda": ((236, 236, 228), "SmoothPlastic"),
         }
         for chave, (cor2, mat2) in claro.items():
             n0, _, _, me, ru = materiais[chave]
@@ -622,6 +634,9 @@ def construir(spec):
             continue
         for i, pedaco in enumerate(dividir(m)):
             cena.adicionar(nome if i == 0 else "%s%d" % (nome, i + 1), pedaco, cor, mat, metal=metal, rug=rug)
+    if manche2 is not None:
+        cena.adicionar("ManchePassageiro", manche2[0], (26, 26, 27), "SmoothPlastic", rug=0.5)
+        cena.adicionar("ManchePassageiroBotoes", manche2[1], (60, 62, 64), "SmoothPlastic", rug=0.5)
     cena.adicionar("Manche", haste, (26, 26, 27), "SmoothPlastic", rug=0.5)
     cena.adicionar("MancheBotoes", botoes, (60, 62, 64), "SmoothPlastic", rug=0.5)
     cena.adicionar("Manete", alav, (28, 28, 30), "SmoothPlastic", rug=0.6)
