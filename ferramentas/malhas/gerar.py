@@ -9,6 +9,7 @@ import aeronaves  # noqa: E402
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SAIDA = os.path.join(RAIZ, "malhas")
 PREVIAS = os.environ.get("PREVIAS")
+IMPORTADOS = {"F5"}
 
 
 def main(filtro=None):
@@ -16,6 +17,8 @@ def main(filtro=None):
     catalogo = {}
     itens = []
     for spec in aeronaves.TODAS:
+        if spec["id"] in IMPORTADOS:
+            continue  # vem de modelos_prontos (importar_f5.py)
         itens.append(("Aeronave_" + spec["id"], lambda s=spec: aeronaves.construir(s), {"Unidade": "metro", "Pivos": {"Helice": [0, spec["helice"][1], spec["helice"][0]] if spec.get("helice") else None}}))
     try:
         import estruturas
