@@ -110,6 +110,21 @@ def construir_cabine(pecas, esc, x_max, alvo=110000):
     return novo, F, cn
 
 
+def adicionar_em_blocos(cena, nome, V, F, cor, material="SmoothPlastic", suave=True, limite=18000, **kw):
+    """Divide as faces em poucas pecas (<= limite triangulos), ordenadas ao longo de Z."""
+    if len(F) == 0:
+        return
+    ordem = np.argsort(V[F].mean(axis=1)[:, 2])
+    F = F[ordem]
+    n = int(np.ceil(len(F) / limite))
+    for i in range(n):
+        Fi = F[i * len(F) // n:(i + 1) * len(F) // n]
+        usado = np.unique(Fi)
+        mapa = -np.ones(len(V), dtype=np.int64)
+        mapa[usado] = np.arange(len(usado))
+        cena.adicionar("%s%d" % (nome, i + 1), Malha(V[usado], mapa[Fi], suave=suave), cor, material, **kw)
+
+
 def carregar_fonte():
     _, pecas = gltf_leitor.carregar(FONTE)
     ext = [p for p in pecas if p["material"] == MAT_EXT]
@@ -118,7 +133,7 @@ def carregar_fonte():
     return pecas, ext, esc, todos[:, 0].max()
 
 
-def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True):
+def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True, sem_regiao_cabine=False, trem=True):
     Vs, Fs, n = [], [], 0
     for p in ext:
         Vs.append(para_jogo(p["V"], esc, x_max))
@@ -133,46 +148,78 @@ def adicionar_exterior(cena, pecas, ext, esc, x_max, alvo, vidro=True):
         if len(Fr) <= alvo:
             break
         celula *= 1.1
-    print("exterior reduzido:", len(Fr), "celula", round(celula, 3))
     V, I = Vr, Fr
+    c = V[I].mean(axis=1)
+    if sem_regiao_cabine:
+        # na cabine o piloto nao ve a casca externa em volta dele: tira essa regiao (evita fragmentos na frente da camera)
+        dentro = (np.abs(c[:, 0]) < 1.05) & (c[:, 2] > -5.6) & (c[:, 2] < -2.0) & (c[:, 1] > -0.25)
+        I = I[~dentro]
+        c = c[~dentro]
+    print("exterior reduzido:", len(I), "celula", round(celula, 3))
     n_face = np.cross(V[I[:, 1]] - V[I[:, 0]], V[I[:, 2]] - V[I[:, 0]])
     n_face /= np.maximum(np.linalg.norm(n_face, axis=1), 1e-9)[:, None]
-    c = V[I].mean(axis=1)
-    cima = n_face[:, 1] > 0.3
-    ruido = np.sin(c[:, 2] * 0.45 + np.sin(c[:, 0] * 0.35) * 1.2) + np.sin(c[:, 0] * 0.5 - c[:, 2] * 0.2)
-    tom = np.digitize(ruido, [-0.4, 0.8])
-    classe = np.where(cima, tom, 3)
-    cores = {0: (110, 116, 122), 1: (100, 106, 112), 2: (120, 126, 132), 3: (150, 156, 162), 4: (60, 64, 68), 5: (36, 38, 42)}
-    nomes = {0: "CinzaA", 1: "CinzaB", 2: "CinzaC", 3: "Ventre", 4: "Radome", 5: "Bocal"}
-    classe = np.where(c[:, 2] < Z_NARIZ + 1.9, 4, classe)
-    classe = np.where(c[:, 2] > 5.2, 5, classe)
-    faixas = np.digitize(c[:, 2], np.quantile(c[:, 2], np.linspace(0.1, 0.9, 9)))
-    for k in range(6):
-        for s in range(10):
-            sel = (classe == k) & (faixas == s)
-            if not sel.any():
-                continue
-            F = I[sel]
-            usado = np.unique(F)
-            mapa = -np.ones(len(V), dtype=np.int64)
-            mapa[usado] = np.arange(len(usado))
-            m = Malha(V[usado], mapa[F], suave=True)
-            if len(m.f) > 19000:
-                raise ValueError("peca grande demais: %d" % len(m.f))
-            mat = "Metal" if k == 5 else "SmoothPlastic"
-            cena.adicionar("%s%d" % (nomes[k], s + 1), m, cores[k], mat, metal=0.15, rug=0.5)
-    for p in pecas:
-        if vidro and p["nome"] == "Object_15":
-            Vg = para_jogo(p["V"], esc, x_max)
-            cena.adicionar("Canopi", Malha(Vg, p["F"], suave=True), (150, 190, 205), "Glass", transparencia=0.55)
-    rodas = [(0, -1.55, -4.3, 0.23, 0.15, -0.4), (-1.2, -1.55, 0.5, 0.3, 0.18, -0.5), (1.2, -1.55, 0.5, 0.3, 0.18, -0.5)]
-    aeronaves.trem(cena, rodas)
+    cima = n_face[:, 1] > 0.25
+    classe = np.where(cima, 0, 1)
+    classe = np.where(c[:, 2] < Z_NARIZ + 1.9, 2, classe)
+    classe = np.where(c[:, 2] > 5.2, 3, classe)
+    cores = {0: (108, 114, 120), 1: (146, 152, 158), 2: (58, 62, 66), 3: (36, 38, 42)}
+    nomes = {0: "Cinza", 1: "Ventre", 2: "Radome", 3: "Bocal"}
+    for k in range(4):
+        adicionar_em_blocos(cena, nomes[k], V, I[classe == k], cores[k], "Metal" if k == 3 else "SmoothPlastic", metal=0.15, rug=0.5)
+    if vidro:
+        for p in pecas:
+            if p["nome"] == "Object_15":
+                Vg = para_jogo(p["V"], esc, x_max)
+                cena.adicionar("Canopi", Malha(Vg, p["F"], suave=True), (150, 190, 205), "Glass", transparencia=0.55)
+    return trem_gripen(cena) if trem else {}
+
+
+def trem_gripen(cena):
+    """Trem de pouso do Gripen: pernas com amortecedor, garfo, freio e rodas; cada perna e uma peca com pivo de recolhimento."""
+    from malha import tubo, cilindro, revolucao, caixa
+    CROMO, CINZA, PRETO_B = (176, 182, 188), (92, 96, 102), (20, 20, 22)
+
+    def pneu(r, w, x, yc, z):
+        pn = revolucao([(r * 0.55, -w / 2), (r * 0.94, -w / 2), (r, -w * 0.32), (r, w * 0.32), (r * 0.94, w / 2), (r * 0.55, w / 2)], 24).girar("y", 90).mover(x, yc, z)
+        aro = cilindro(r * 0.58, w * 0.86, 20, "x").mover(x, yc, z)
+        return pn, aro
+
+    # perna do nariz (rodas duplas)
+    zN, rN, wN = -4.3, 0.21, 0.13
+    ycN = -1.55 + rN
+    pnA, arA = pneu(rN, wN, -0.1, ycN, zN)
+    pnB, arB = pneu(rN, wN, 0.1, ycN, zN)
+    perna = cilindro(0.055, 0.7, 14, "y").mover(0, -0.85, zN) + cilindro(0.038, 0.5, 12, "y").mover(0, -1.18, zN)
+    garfo = tubo([[-0.13, ycN, zN], [-0.13, ycN + 0.12, zN], [0, ycN + 0.17, zN]], 0.016, 8) + tubo([[0.13, ycN, zN], [0.13, ycN + 0.12, zN], [0, ycN + 0.17, zN]], 0.016, 8)
+    elo = tubo([[0, -0.78, zN], [0, -0.92, zN - 0.16], [0, -1.1, zN - 0.02]], 0.013, 8)
+    escora = tubo([[0, -0.62, zN], [0, -0.42, zN + 0.55]], 0.022, 8)
+    farol = caixa(0.07, 0.05, 0.05).mover(0, -0.7, zN - 0.07)
+    cena.adicionar("TremNariz", perna + garfo + elo + escora + farol + arA + arB, CROMO, "Metal", metal=0.7, rug=0.35)
+    cena.adicionar("TremNarizPneus", pnA + pnB, PRETO_B, "Rubber")
+
+    art = {"TremNariz": {"Pivo": [0, -0.5, zN], "Eixo": [1, 0, 0], "Ang": -90}}
+    # pernas principais
+    zM, rM, wM, xM = 0.5, 0.33, 0.2, 1.2
+    ycM = -1.55 + rM
+    for lado, nome, ang in ((-1, "E", 90), (1, "D", -90)):
+        x = lado * xM
+        pn, ar = pneu(rM, wM, x, ycM, zM)
+        amort = cilindro(0.07, 0.55, 16, "y").mover(x, -0.78, zM - 0.04) + cilindro(0.048, 0.5, 14, "y").mover(x, -1.1, zM - 0.05)
+        eixo_ = cilindro(0.04, 0.34, 12, "x").mover(x, ycM, zM)
+        disco = cilindro(0.2, 0.025, 20, "x").mover(x + lado * 0.1, ycM, zM)
+        brace = tubo([[x, -0.72, zM - 0.04], [x - lado * 0.5, -0.5, zM + 0.35]], 0.026, 8)
+        brace2 = tubo([[x, -0.95, zM - 0.05], [x - lado * 0.45, -0.52, zM - 0.5]], 0.02, 8)
+        elo = tubo([[x, -0.92, zM - 0.03], [x, -1.0, zM - 0.17], [x, -1.18, zM - 0.06]], 0.014, 8)
+        cena.adicionar("TremPrincipal%s" % nome, amort + eixo_ + disco + brace + brace2 + elo + ar, CROMO, "Metal", metal=0.7, rug=0.35)
+        cena.adicionar("TremPrincipal%sPneus" % nome, pn, PRETO_B, "Rubber")
+        art["TremPrincipal%s" % nome] = {"Pivo": [x * 0.96, -0.5, zM], "Eixo": [0, 0, 1], "Ang": ang}
+    return art
 
 
 def principal():
     pecas, ext, esc, x_max = carregar_fonte()
     cena = Cena()
-    adicionar_exterior(cena, pecas, ext, esc, x_max, int(os.environ.get("ALVO", 70000)))
+    adicionar_exterior(cena, pecas, ext, esc, x_max, int(os.environ.get("ALVO", 45000)))
     cena.ancoras(1.0)
     cena.salvar_glb(SAIDA)
     print("salvo", SAIDA, cena.triangulos(), "triangulos,", len(cena.pecas), "pecas")
@@ -185,39 +232,25 @@ def cabine_sim():
     import cabines
     pecas, ext, esc, x_max = carregar_fonte()
     cena = Cena()
-    adicionar_exterior(cena, pecas, ext, esc, x_max, int(os.environ.get("ALVO_SIM", 30000)), vidro=False)
-    V, F, C = construir_cabine(pecas, esc, x_max, int(os.environ.get("ALVO_CABINE", 110000)))
-    n_face = np.cross(V[F[:, 1]] - V[F[:, 0]], V[F[:, 2]] - V[F[:, 0]])
+    art = adicionar_exterior(cena, pecas, ext, esc, x_max, int(os.environ.get("ALVO_SIM", 38000)), vidro=False)
+    V, F, C = construir_cabine(pecas, esc, x_max, int(os.environ.get("ALVO_CABINE", 70000)))
     cf = C[F].mean(axis=1)
-    cf = np.clip(cf * 0.8 + 6, 0, 255)  # a textura original e bem escura; clareia um pouco
-    k = 16
+    cf = np.clip(cf * 1.2 + 16, 0, 255)  # a textura original e bem escura; clareia um pouco
+    k = 10
     centros, rot = kmeans(cf, k)
-    zc = V[F].mean(axis=1)[:, 2]
-    faixas = np.digitize(zc, np.quantile(zc, np.linspace(0.1, 0.9, 9)))
     for j in range(k):
-        for s in range(10):
-            sel = (rot == j) & (faixas == s)
-            if not sel.any():
-                continue
-            Fs = F[sel]
-            usado = np.unique(Fs)
-            mapa = -np.ones(len(V), dtype=np.int64)
-            mapa[usado] = np.arange(len(usado))
-            m = Malha(V[usado], mapa[Fs], suave=False)
-            if len(m.f) > 19000:
-                raise ValueError("peca de cabine grande demais: %d" % len(m.f))
-            cor = tuple(int(x) for x in centros[j])
-            cena.adicionar("Cabine%d_%d" % (j, s), m, cor, "SmoothPlastic", rug=0.7)
+        cor = tuple(int(x) for x in centros[j])
+        adicionar_em_blocos(cena, "Cabine%d_" % j, V, F[rot == j], cor, "SmoothPlastic", suave=False, rug=0.7)
 
     # manche, manete e painel de interruptores (as pecas animadas ficam com nome proprio)
     lay = {}
-    bx, by, bz = 0.0, -0.05, -4.0
+    bx, by, bz = 0.0, 0.08, -4.08
     haste, botoes = cabines.manche(bx, by, bz)
-    cena.adicionar("Manche", haste, (26, 26, 27), "SmoothPlastic", rug=0.5)
-    cena.adicionar("MancheBotoes", botoes, (60, 62, 64), "SmoothPlastic", rug=0.5)
+    cena.adicionar("Manche", haste, (74, 76, 80), "SmoothPlastic", rug=0.5)
+    cena.adicionar("MancheBotoes", botoes, (120, 122, 126), "SmoothPlastic", rug=0.5)
     lay["Manche"] = {"Pivo": [bx, by, bz]}
-    mx, my, mz = -0.40, 0.66, -4.05
-    cena.adicionar("Manete", cabines.manete(mx, my + 0.02, mz), (28, 28, 30), "SmoothPlastic", rug=0.6)
+    mx, my, mz = -0.38, 0.70, -3.5
+    cena.adicionar("Manete", cabines.manete(mx, my + 0.02, mz), (84, 86, 90), "SmoothPlastic", rug=0.6)
     lay["Manete"] = {"Pivo": [mx, my + 0.02, mz]}
     from malha import caixa
     cena.adicionar("PainelChaves", caixa(0.1, 0.02, 0.62, 0.004).mover(-0.36, 0.735, -3.95), (44, 46, 50), "SmoothPlastic", rug=0.6)
@@ -235,6 +268,11 @@ def cabine_sim():
     lay["HUD"] = {"P": [0, 0.887, -4.505], "R": [28, 0, 0], "Tam": [0.24, 0.19]}
     lay["Flape"] = {"P": [-0.40, 0.75, -3.45], "R": [0, 0, 0]}
     lay["Trem"] = {"P": [-0.36, 0.56, -4.57], "R": [inc, 0, 0]}
+    from malha import tubo
+    punho = tubo([[-0.08, 0.24, -3.86], [-0.08, 0.34, -3.9], [0.08, 0.34, -3.9], [0.08, 0.24, -3.86]], 0.014, 8)
+    cena.adicionar("PunhoEjecao", punho, (232, 186, 18), "SmoothPlastic", rug=0.5)
+    lay["Ejecao"] = {"P": [0, 0.34, -3.9], "R": [0, 0, 0]}
+    lay["TremArt"] = art
     lay["Olho"] = [0, 1.0, -3.6]
     lay["Rodas"] = True
     cena.ancoras()

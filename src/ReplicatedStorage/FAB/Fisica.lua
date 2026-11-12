@@ -490,7 +490,11 @@ local function subpasso(s, dt, e)
 				-- direcao da roda (a bequilha esterça)
 				local dx, dz, sx, sz = fhx, fhz, rhx, rhz
 				if roda[7] then
-					local ang = limitar(dr + cRol * 0.5, -1, 1) * P.DirecaoBequilha * limitar(1 - (Vsolo - 8) / 35, 0.15, 1)
+					-- direcao assistida: sem comando de leme, a bequilha se alinha ao deslocamento (mantem a pista reta no vento cruzado)
+					local vLongC = vx * fhx + vz * fhz
+					local vLatC = vx * rhx + vz * rhz
+					local assist = (Vsolo > 2) and limitar(vLatC / math.max(math.abs(vLongC), 4) * (ASSIST_K or 6), -1, 1) or 0
+					local ang = limitar(dr + cRol * 0.5 + assist, -1, 1) * P.DirecaoBequilha * limitar(1 - (Vsolo - 8) / 35, 0.15, 1)
 					local ca, sa = cos(ang), sin(ang)
 					dx, dz = fhx * ca + rhx * sa, fhz * ca + rhz * sa
 					sx, sz = rhx * ca - fhx * sa, rhz * ca - fhz * sa
@@ -522,6 +526,13 @@ local function subpasso(s, dt, e)
 			falhar(s, "Pouso duro: o trem de pouso não suportou o impacto")
 			return
 		end
+	end
+	if emSolo and Vsolo > 3 and math.abs(cLem) < 0.1 then
+		-- estabilizador direcional no solo (direcao da bequilha e atrito dos pneus): mantem o eixo alinhado ao deslocamento sem comando de leme
+		local vLongB = vx * fhx + vz * fhz
+		local vLatB = vx * rhx + vz * rhz
+		local beta = math.atan2(vLatB, math.max(math.abs(vLongB), 4))
+		Ty = Ty - P.Iguinada * (9 * beta + 3 * s.wy)
 	end
 	s.EmSolo = emSolo
 	s.Superficie = superficieAtual

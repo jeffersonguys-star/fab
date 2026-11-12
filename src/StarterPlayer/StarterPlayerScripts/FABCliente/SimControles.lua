@@ -120,6 +120,7 @@ function CTRL.Criar(UI, P, opcoes)
 	botao("Motor", "MOTOR", 11, false, function() obj.AoAcao("Motor") end)
 	botao("Camera", "CÂMERA", 12, false, function() obj.AoAcao("Camera") end)
 	botao("FreioEst", "FREIO EST", 13, false, function() obj.AoAcao("FreioEst") end)
+	if P.Ejetavel then botao("Ejetar", "EJETAR", 14, false, function() obj.AoAcao("Ejetar") end) end
 
 	-- topo: menu e vista
 	local topo = UI.Novo("Frame", { Position = UDim2.new(0, 16, 0, 14), Size = UDim2.fromOffset(0, 36), AutomaticSize = Enum.AutomaticSize.X,

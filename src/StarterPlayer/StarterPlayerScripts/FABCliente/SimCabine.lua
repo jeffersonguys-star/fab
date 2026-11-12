@@ -149,8 +149,15 @@ function CAB.Criar(P, pastaPai)
 				nPartes = nPartes + 1
 				if c.Name == "Manche" or c.Name == "MancheBotoes" or c.Name == "Manete" or c.Name == "Helice" then
 					table.insert(obj.Animadas, c)
-				elseif c.Name == "Trem" or c.Name == "TremPneus" then
+				elseif string.sub(c.Name, 1, 4) == "Trem" then
 					table.insert(obj.Trem, c)
+					if lay.TremArt then
+						local melhor
+						for chave in pairs(lay.TremArt) do
+							if string.sub(c.Name, 1, #chave) == chave and (not melhor or #chave > #melhor) then melhor = chave end
+						end
+						if melhor then c:SetAttribute("ArtTrem", melhor) end
+					end
 				end
 			end
 		end
@@ -384,7 +391,21 @@ function CAB.Criar(P, pastaPai)
 			end
 		end
 		local tremEmbaixo = (s.Trem or 1) > 0.5
-		for _, p in ipairs(obj.Trem) do p.LocalTransparencyModifier = tremEmbaixo and 0 or 1 end
+		local tt = s.Trem or 1
+		for _, p in ipairs(obj.Trem) do
+			local chave = p:GetAttribute("ArtTrem")
+			local art = chave and lay.TremArt and lay.TremArt[chave]
+			local w = obj.Pivos[p]
+			local c0 = p:GetAttribute("C0")
+			if art and w and c0 then
+				local pv = Vector3.new(art.Pivo[1] * E, art.Pivo[2] * E, art.Pivo[3] * E)
+				local eixo = Vector3.new(art.Eixo[1], art.Eixo[2], art.Eixo[3])
+				w.C0 = CFrame.new(pv) * CFrame.fromAxisAngle(eixo, math.rad(art.Ang) * (1 - tt)) * CFrame.new(-pv) * c0
+				p.LocalTransparencyModifier = tt < 0.02 and 1 or 0
+			else
+				p.LocalTransparencyModifier = tremEmbaixo and 0 or 1
+			end
+		end
 		local tr = obj.Interruptores.Trem
 		if tr and tr.WH then
 			local alvo = e.Trem and -1 or 1

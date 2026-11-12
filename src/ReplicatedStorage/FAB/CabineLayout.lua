@@ -114,6 +114,10 @@ return {
 		}
 	},
 	F39 = {
+		Ejecao = {
+			P = { 0, 0.34, -3.9 },
+			R = { 0, 0, 0 }
+		},
 		Flape = {
 			P = { -0.4, 0.75, -3.45 },
 			R = { 0, 0, 0 }
@@ -157,10 +161,10 @@ return {
 		},
 		Luzes = {  },
 		Manche = {
-			Pivo = { 0, -0.05, -4 }
+			Pivo = { 0, 0.08, -4.08 }
 		},
 		Manete = {
-			Pivo = { -0.4, 0.68, -4.05 }
+			Pivo = { -0.38, 0.72, -3.5 }
 		},
 		Mostradores = {  },
 		Olho = { 0, 1, -3.6 },
@@ -191,6 +195,23 @@ return {
 		Trem = {
 			P = { -0.36, 0.56, -4.57 },
 			R = { -11, 0, 0 }
+		},
+		TremArt = {
+			TremNariz = {
+				Ang = -90,
+				Eixo = { 1, 0, 0 },
+				Pivo = { 0, -0.5, -4.3 }
+			},
+			TremPrincipalD = {
+				Ang = -90,
+				Eixo = { 0, 0, 1 },
+				Pivo = { 1.152, -0.5, 0.5 }
+			},
+			TremPrincipalE = {
+				Ang = 90,
+				Eixo = { 0, 0, 1 },
+				Pivo = { -1.152, -0.5, 0.5 }
+			}
 		}
 	},
 	F5 = {

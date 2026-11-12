@@ -96,6 +96,7 @@ Aeronaves.T27 = {
 Aeronaves.A29 = {
 	Id = "A29", Nome = "A-29 Super Tucano", Funcao = "Ataque leve e treinamento avançado",
 	Tipo = "helice", Cabine = "vidro", Assentos = "tandem", HUD = true,
+	Ejetavel = true,
 	Olho = { 0, 1.0, -1.1 },
 	Massa = 3900, Combustivel = 500,
 	Area = 19.4, Envergadura = 11.14, Corda = 1.8,
@@ -136,6 +137,7 @@ Aeronaves.A29 = {
 Aeronaves.F5 = {
 	Id = "F5", Nome = "F-5EM Tiger II", Funcao = "Caça de superioridade aérea",
 	Tipo = "jato", Cabine = "vidro", Assentos = "unico", HUD = true,
+	Ejetavel = true,
 	Olho = { 0, 0.95, -3.2 },
 	Massa = 4600, Combustivel = 1700,
 	Area = 17.28, Envergadura = 8.13, Corda = 2.36,
@@ -174,6 +176,7 @@ Aeronaves.F5 = {
 Aeronaves.F39 = {
 	Id = "F39", Nome = "F-39E Gripen", Funcao = "Caça multimissão",
 	Tipo = "jato", Cabine = "vidro", Assentos = "unico", HUD = true, FBW = true,
+	Ejetavel = true,
 	Olho = { 0, 1.0, -3.6 },
 	Massa = 8600, Combustivel = 2600,
 	Area = 30, Envergadura = 8.6, Corda = 3.5,

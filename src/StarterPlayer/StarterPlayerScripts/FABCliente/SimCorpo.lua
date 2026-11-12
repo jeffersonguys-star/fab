@@ -138,6 +138,7 @@ function CORPO.Criar(P, pasta)
 			if raiz then return raiz.CFrame:PointToObjectSpace(base.Position) end
 		end
 		if nome == "Trem" then return ponto(lay.Trem) end
+		if nome == "Ejetar" and lay.Ejecao then return ponto(lay.Ejecao) end
 		if nome == "Flape" then return ponto(lay.Flape) end
 		if nome == "AeroFreio" or nome == "Manete" then return topoManete({ Manete = 0.5 }) end
 		if nome == "Motor" then

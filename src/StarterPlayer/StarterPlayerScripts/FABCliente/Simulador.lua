@@ -244,7 +244,7 @@ function SIM.Iniciar(UI)
 		local function acao(nome)
 			if not voo or v.Fim then return end
 			local e = ctrl.Entradas
-			if corpo and (nome == "Trem" or nome == "Flape" or nome == "AeroFreio" or nome == "Motor" or nome == "FreioEst") then
+			if corpo and (nome == "Trem" or nome == "Flape" or nome == "AeroFreio" or nome == "Motor" or nome == "FreioEst" or nome == "Ejetar") then
 				pcall(corpo.Alcancar, nome, cab)
 			end
 			if nome == "Trem" and P.TremRetratil then
@@ -263,6 +263,26 @@ function SIM.Iniciar(UI)
 					cab.DefinirInterruptor("FreioEst", novo)
 					hud.Mensagem(novo and "Freio de estacionamento APLICADO" or "Freio de estacionamento SOLTO", 2)
 				end
+			elseif nome == "Ejetar" then
+				if not P.Ejetavel then return end
+				local agora = os.clock()
+				if not v.EjetarPronto or agora - v.EjetarPronto > 3 then
+					v.EjetarPronto = agora
+					hud.Mensagem("EJEÇÃO: toque em EJETAR de novo para confirmar", 3)
+					return
+				end
+				v.EjetarPronto = nil
+				v.Fim = true
+				hud.Mensagem("EJEÇÃO! O piloto ejetou", 3)
+				task.delay(3, function()
+					if voo ~= v then return end
+					if v.Livre then
+						iniciarLivre()
+					else
+						encerrarVoo()
+						UI.Enviar("Sim_Resultado", { Id = p.Id, Nota = 0, Aprovado = false, Linhas = { "Ejeção realizada: a lição foi encerrada." } })
+					end
+				end)
 			elseif nome == "Camera" then
 				v.Vista = ((v.Vista or 1) % 5) + 1
 				local nomes = { "Cabine", "Atrás", "Lateral", "Frente", "Cima" }
