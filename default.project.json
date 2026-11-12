@@ -22,7 +22,7 @@
       "$properties": {
         "StreamingEnabled": true,
         "StreamingMinRadius": 256,
-        "StreamingTargetRadius": 1600,
+        "StreamingTargetRadius": 5000,
         "StreamOutBehavior": "Opportunistic"
       }
     },

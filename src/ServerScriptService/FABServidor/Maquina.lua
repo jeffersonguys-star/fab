@@ -463,9 +463,16 @@ function MAQ.Iniciar(N)
 			Horas = N.Dados[plr] and N.Dados[plr].HorasSimulador or 0 })
 	end
 
+	local focos = {}
+	local function limparFoco(plr)
+		pcall(function() plr.ReplicationFocus = nil end)
+		if focos[plr] then focos[plr]:Destroy() focos[plr] = nil end
+	end
+
 	local function sair(plr)
 		local maq = porJogador[plr]
 		if not maq then return end
+		limparFoco(plr)
 		porJogador[plr] = nil
 		maq.Telemetria = nil
 		maq.TV:SetAttribute("Ativo", false)
@@ -574,6 +581,23 @@ function MAQ.Iniciar(N)
 		local maq = porJogador[plr]
 		if not maq or type(t) ~= "table" then return end
 		maq.Telemetria = t
+		-- o mapa carrega em volta da aeronave (o personagem fica parado na cabine do simulador)
+		if t.Virt ~= nil then
+			local f = focos[plr]
+			if not f then
+				f = Instance.new("Part")
+				f.Name = "FocoSimulador"
+				f.Anchored, f.CanCollide, f.CanQuery, f.CanTouch, f.CastShadow = true, false, false, false, false
+				f.Transparency = 1
+				f.Size = Vector3.one
+				f.Parent = workspace
+				focos[plr] = f
+				pcall(function() plr.ReplicationFocus = f end)
+			end
+			local function lim(v, m) return math.clamp(tonumber(v) or 0, -m, m) end
+			local E = 1 / 0.28 -- telemetria em metros; o mundo esta em studs
+			f.Position = Vector3.new(lim(t.X, 1e5), lim(t.Y, 1e5), lim(t.Z, 1e5)) * E
+		end
 		do
 			local tv = maq.TV
 			local function num(v, lim) return math.clamp(tonumber(v) or 0, -lim, lim) end
