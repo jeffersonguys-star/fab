@@ -97,8 +97,12 @@ function CORPO.Criar(P, pasta)
 	pcall(function() clone:ScaleTo(ESCALA) end)
 	local k = ESCALA
 	local tams = {}
+	local FINO = 0.4 -- bracos de piloto, nao de avatar: bem mais finos que o padrao do Roblox
 	for lado, q in pairs(pedacos) do
-		tams[lado] = { q[1].Size.Y, q[2].Size.Y, q[3].Size.Y, q[1].Size, q[2].Size }
+		local m = q[3]
+		m.Size = Vector3.new(m.Size.X * FINO * 1.2, m.Size.Y, m.Size.Z * FINO * 1.2)
+		tams[lado] = { q[1].Size.Y, q[2].Size.Y, m.Size.Y, Vector3.new(q[1].Size.X * FINO, 0, q[1].Size.Z * FINO),
+			Vector3.new(q[2].Size.X * FINO, 0, q[2].Size.Z * FINO) }
 	end
 	for _, d in ipairs(clone:GetChildren()) do
 		if d:IsA("Accessory") then

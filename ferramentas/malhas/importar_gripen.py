@@ -1,3 +1,4 @@
+import math
 """
 FAB - converte o "SAAB Jas 39A Gripen (Detailed Cockpit)" de ngkoret (CC-BY-4.0) em
 malhas/Aeronave_F39.glb (exterior) para o jogo.
@@ -253,8 +254,18 @@ def trem_gripen(cena):
     CROMO, CINZA, PRETO_B = (176, 182, 188), (92, 96, 102), (20, 20, 22)
 
     def pneu(r, w, x, yc, z):
-        pn = revolucao([(r * 0.55, -w / 2), (r * 0.94, -w / 2), (r, -w * 0.32), (r, w * 0.32), (r * 0.94, w / 2), (r * 0.55, w / 2)], 24).girar("y", 90).mover(x, yc, z)
-        aro = cilindro(r * 0.58, w * 0.86, 20, "x").mover(x, yc, z)
+        # pneu com ombros arredondados e tres sulcos de banda de rodagem
+        perfil = [(r * 0.56, -w / 2), (r * 0.80, -w / 2), (r * 0.93, -w * 0.45), (r * 0.985, -w * 0.36), (r, -w * 0.28),
+                  (r, -w * 0.12), (r * 0.972, -w * 0.09), (r * 0.972, w * 0.09), (r, w * 0.12), (r, w * 0.28),
+                  (r * 0.985, w * 0.36), (r * 0.93, w * 0.45), (r * 0.80, w / 2), (r * 0.56, w / 2)]
+        pn = revolucao(perfil, 40).girar("y", 90).mover(x, yc, z)
+        # roda: aro com bordas, cubo central e parafusos
+        aro = cilindro(r * 0.6, w * 0.9, 28, "x").mover(x, yc, z)
+        aro = aro + cilindro(r * 0.64, w * 0.1, 28, "x").mover(x - w * 0.46, yc, z) + cilindro(r * 0.64, w * 0.1, 28, "x").mover(x + w * 0.46, yc, z)
+        aro = aro + cilindro(r * 0.24, w * 1.08, 18, "x").mover(x, yc, z)
+        for i in range(8):
+            a = math.radians(45 * i)
+            aro = aro + cilindro(r * 0.035, w * 1.14, 8, "x").mover(x, yc + r * 0.4 * math.sin(a), z + r * 0.4 * math.cos(a))
         return pn, aro
 
     # perna do nariz (rodas duplas)
@@ -322,8 +333,8 @@ def cabine_sim():
     cena.adicionar("Manche", haste, (74, 76, 80), "SmoothPlastic", rug=0.5)
     cena.adicionar("MancheBotoes", botoes, (120, 122, 126), "SmoothPlastic", rug=0.5)
     lay["Manche"] = {"Pivo": [bx, by, bz]}
-    mx, my, mz = -0.38, 0.70, -3.5
-    cena.adicionar("Manete", cabines.manete(mx, my + 0.02, mz), (84, 86, 90), "SmoothPlastic", rug=0.6)
+    mx, my, mz = -0.40, 0.70, -3.8
+    cena.adicionar("Manete", cabines.manete(mx, my + 0.02, mz), (112, 114, 120), "SmoothPlastic", rug=0.6)
     lay["Manete"] = {"Pivo": [mx, my + 0.02, mz]}
     from malha import caixa
     cena.adicionar("PainelChaves", caixa(0.1, 0.02, 0.62, 0.004).mover(-0.27, 0.735, -3.95), (44, 46, 50), "SmoothPlastic", rug=0.6)

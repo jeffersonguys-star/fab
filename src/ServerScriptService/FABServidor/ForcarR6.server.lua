@@ -15,7 +15,7 @@ local function paraR6(jogador, char)
 	convertendo[jogador] = true
 	local ok, novo = pcall(function()
 		local desc = hum:GetAppliedDescription()
-		desc.LeftArm, desc.RightArm = 0, 0 -- braco de pacote/efeito (ex.: gelo) nao existe em R6: usa o braco padrao
+		desc.LeftArm, desc.RightArm, desc.LeftLeg, desc.RightLeg, desc.Torso = 0, 0, 0, 0, 0 -- braco de pacote/efeito (ex.: gelo) nao existe em R6: usa o braco padrao
 		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R6)
 	end)
 	if not ok or not novo then
