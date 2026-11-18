@@ -239,6 +239,11 @@ function CAB.Criar(P, pastaPai)
 		txt.Parent = g
 		local luz = parte(modelo, "LuzInterruptor", Vector3.new(0.008, 0.008, 0.004), cfBase * CFrame.new(0, -0.024 * E, 0.006 * E), Color3.fromRGB(30, 30, 30), Enum.Material.SmoothPlastic)
 		for _, peca in ipairs({ base, alavanca }) do peca:SetAttribute("Interruptor", id) end
+		if lay.InterruptoresOcultos then
+			-- o interruptor continua existindo (estado e alcance do braco), mas nao aparece na cabine
+			for _, peca in ipairs({ base, alavanca, etiqueta, luz }) do peca.Transparency = 1 peca.CanQuery = false end
+			g.Enabled = false
+		end
 		obj.Interruptores[id] = { Base = base, Alavanca = alavanca, Weld = w, CF = cfAlav, Luz = luz }
 		obj.Estados[id] = false
 	end

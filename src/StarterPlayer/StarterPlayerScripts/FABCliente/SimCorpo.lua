@@ -43,7 +43,7 @@ function CORPO.Criar(P, pasta)
 	local clone = Instance.new("Model")
 	clone.Name = "CorpoPiloto"
 	local k = ESCALA
-	local COR_MANGA, COR_LUVA = Color3.fromRGB(74, 84, 62), Color3.fromRGB(44, 44, 46)
+	local COR_MANGA, COR_LUVA = Color3.fromRGB(88, 102, 70), Color3.fromRGB(30, 30, 32)
 	local function nova(nome, forma, cor, mat)
 		local q = Instance.new("Part")
 		q.Name = nome
@@ -59,10 +59,10 @@ function CORPO.Criar(P, pasta)
 	local pedacos = {}
 	for _, lado in ipairs({ "E", "D" }) do
 		pedacos[lado] = {
-			nova("Braco" .. lado, Enum.PartType.Cylinder, COR_MANGA, Enum.Material.Fabric),
-			nova("Antebraco" .. lado, Enum.PartType.Cylinder, COR_MANGA, Enum.Material.Fabric),
-			nova("Mao" .. lado, Enum.PartType.Ball, COR_LUVA, Enum.Material.Leather),
-			nova("Cotovelo" .. lado, Enum.PartType.Ball, COR_MANGA, Enum.Material.Fabric),
+			nova("Braco" .. lado, Enum.PartType.Cylinder, COR_MANGA, Enum.Material.SmoothPlastic),
+			nova("Antebraco" .. lado, Enum.PartType.Cylinder, COR_MANGA, Enum.Material.SmoothPlastic),
+			nova("Mao" .. lado, Enum.PartType.Ball, COR_LUVA, Enum.Material.SmoothPlastic),
+			nova("Cotovelo" .. lado, Enum.PartType.Ball, COR_MANGA, Enum.Material.SmoothPlastic),
 		}
 	end
 	-- medidas reais (metros) convertidas para studs da cabine
@@ -213,8 +213,8 @@ function CORPO.Criar(P, pasta)
 		-- a camera acompanha a cabeca (posicao inteira, giro pela metade)
 		local cabecaPos = cfTorso * Vector3.new(0, 1.5 * k, 0)
 		local cabecaRepouso = cfTronco0 * Vector3.new(0, 1.5 * k, 0)
-		obj.Desloc = cabecaPos - cabecaRepouso
-		obj.Giro = CFrame.Angles(math.rad(-28 * inclinacao * 0.5), 0, math.rad(inclinaLado * 20 * inclinacao * 0.5))
+		obj.Desloc = (cabecaPos - cabecaRepouso) * 0.3 -- a camera so acompanha de leve: o corpo se inclina, a visao nao salta
+		obj.Giro = CFrame.Angles(math.rad(-28 * inclinacao * 0.15), 0, math.rad(inclinaLado * 20 * inclinacao * 0.15))
 
 		if mancheDireita then
 			braco("E", ombroE, posEsq)

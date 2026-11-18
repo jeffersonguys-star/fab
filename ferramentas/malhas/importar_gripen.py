@@ -351,13 +351,13 @@ def cabine_sim():
     cena.adicionar("Manche", haste, (74, 76, 80), "SmoothPlastic", rug=0.5)
     cena.adicionar("MancheBotoes", botoes, (120, 122, 126), "SmoothPlastic", rug=0.5)
     lay["Manche"] = {"Pivo": [bx, by, bz]}
-    mx, my, mz = -0.28, 0.67, -3.5
+    mx, my, mz = -0.34, 0.76, -4.05
     cena.adicionar("Manete", cabines.manete(mx, my + 0.02, mz), (112, 114, 120), "SmoothPlastic", rug=0.6)
     lay["Manete"] = {"Pivo": [mx, my + 0.02, mz]}
-    from malha import caixa
-    cena.adicionar("PainelChaves", caixa(0.1, 0.02, 0.62, 0.004).mover(-0.27, 0.735, -3.95), (44, 46, 50), "SmoothPlastic", rug=0.6)
     ids = ["Bateria", "Bomba", "Ignicao", "Partida", "Luzes", "FreioEst"]
-    lay["Interruptores"] = [{"Id": i, "P": [-0.27, 0.745, -4.2 + 0.1 * n], "R": [0, 0, 0]} for n, i in enumerate(ids)]
+    # os interruptores existem so como logica (estado e alvo do braco): ficam ocultos no console esquerdo
+    lay["InterruptoresOcultos"] = True
+    lay["Interruptores"] = [{"Id": i, "P": [-0.30, 0.80, -3.9 + 0.05 * n], "R": [0, 0, 0]} for n, i in enumerate(ids)]
     # telas: tres MFDs do painel (posicoes medidas na malha original)
     inc = -11
     lay["Telas"] = [
@@ -368,7 +368,7 @@ def cabine_sim():
     lay["Mostradores"] = []
     lay["Luzes"] = []
     lay["HUD"] = {"P": [0, 0.887, -4.505], "R": [28, 0, 0], "Tam": [0.24, 0.19]}
-    lay["Flape"] = {"P": [-0.31, 0.80, -3.68], "R": [0, 0, 0]}
+    lay["Flape"] = {"P": [-0.31, 0.80, -3.75], "R": [0, 0, 0]}
     lay["Trem"] = {"P": [-0.36, 0.56, -4.57], "R": [inc, 0, 0]}
     from malha import tubo
     punho = tubo([[-0.08, 0.24, -3.86], [-0.08, 0.34, -3.9], [0.08, 0.34, -3.9], [0.08, 0.24, -3.86]], 0.014, 8)
